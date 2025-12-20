@@ -96,8 +96,24 @@ export default function ClientPanel() {
   };
 
   const handleMenuNavigate = (page: string) => {
-    if (page === 'tracking' && currentOrder) {
-      setIsTrackingOpen(true);
+    switch (page) {
+      case 'tracking':
+        if (currentOrder) {
+          setIsTrackingOpen(true);
+        }
+        break;
+      case 'orders':
+        // TODO: Implement orders history page
+        navigate('/orders');
+        break;
+      case 'addresses':
+        // TODO: Implement addresses management page
+        navigate('/addresses');
+        break;
+      case 'settings':
+        // TODO: Implement settings page
+        navigate('/settings');
+        break;
     }
   };
 
