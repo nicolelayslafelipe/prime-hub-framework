@@ -1,0 +1,160 @@
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Order, OrderStatus } from '@/types';
+import { 
+  ArrowLeft, 
+  Clock, 
+  ChefHat, 
+  Package, 
+  Truck, 
+  CheckCircle2,
+  MapPin
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface OrderTrackingProps {
+  isOpen: boolean;
+  onClose: () => void;
+  order: Order | null;
+}
+
+const statusSteps: { status: OrderStatus; label: string; icon: React.ElementType }[] = [
+  { status: 'pending', label: 'Pedido Recebido', icon: Clock },
+  { status: 'confirmed', label: 'Confirmado', icon: CheckCircle2 },
+  { status: 'preparing', label: 'Preparando', icon: ChefHat },
+  { status: 'ready', label: 'Pronto', icon: Package },
+  { status: 'out_for_delivery', label: 'Saiu para Entrega', icon: Truck },
+  { status: 'delivered', label: 'Entregue', icon: CheckCircle2 },
+];
+
+const statusIndex: Record<OrderStatus, number> = {
+  pending: 0,
+  confirmed: 1,
+  preparing: 2,
+  ready: 3,
+  out_for_delivery: 4,
+  delivered: 5,
+  cancelled: -1,
+};
+
+export function OrderTracking({ isOpen, onClose, order }: OrderTrackingProps) {
+  if (!order) return null;
+
+  const currentStepIndex = statusIndex[order.status];
+  const isCancelled = order.status === 'cancelled';
+
+  return (
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent className="w-full sm:max-w-md p-0 flex flex-col bg-card border-border">
+        <SheetHeader className="p-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <SheetTitle className="text-xl font-bold">Pedido #{order.orderNumber}</SheetTitle>
+              <p className="text-sm text-muted-foreground">Acompanhe seu pedido em tempo real</p>
+            </div>
+          </div>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          {isCancelled ? (
+            <div className="text-center py-8">
+              <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+                <Package className="h-8 w-8 text-destructive" />
+              </div>
+              <h3 className="text-lg font-semibold text-destructive mb-2">Pedido Cancelado</h3>
+              <p className="text-sm text-muted-foreground">
+                Este pedido foi cancelado
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Progress Steps */}
+              <div className="relative">
+                {statusSteps.map((step, index) => {
+                  const isCompleted = index <= currentStepIndex;
+                  const isCurrent = index === currentStepIndex;
+                  const Icon = step.icon;
+
+                  return (
+                    <div key={step.status} className="flex gap-4 pb-8 last:pb-0">
+                      {/* Line */}
+                      {index < statusSteps.length - 1 && (
+                        <div 
+                          className={cn(
+                            "absolute left-5 w-0.5 h-8 translate-y-10",
+                            isCompleted ? 'bg-primary' : 'bg-border'
+                          )}
+                          style={{ top: `${index * 64 + 32}px` }}
+                        />
+                      )}
+                      
+                      {/* Icon */}
+                      <div 
+                        className={cn(
+                          "relative z-10 h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
+                          isCurrent && 'ring-4 ring-primary/20',
+                          isCompleted ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                        )}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 pt-2">
+                        <p className={cn(
+                          "font-medium",
+                          isCompleted ? 'text-foreground' : 'text-muted-foreground'
+                        )}>
+                          {step.label}
+                        </p>
+                        {isCurrent && (
+                          <p className="text-sm text-primary animate-pulse mt-1">
+                            Em andamento...
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Order Info */}
+              <div className="mt-8 space-y-4">
+                <div className="card-premium p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Endereço de entrega</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{order.customerAddress}</p>
+                </div>
+
+                <div className="card-premium p-4">
+                  <h4 className="font-medium mb-3">Itens do pedido</h4>
+                  <div className="space-y-2">
+                    {order.items.map((item) => (
+                      <div key={item.id} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          {item.quantity}x {item.productName}
+                        </span>
+                        <span className="font-mono">
+                          R$ {(item.unitPrice * item.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="border-t border-border pt-2 mt-2 flex justify-between font-bold">
+                      <span>Total</span>
+                      <span className="text-primary font-mono">R$ {order.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}

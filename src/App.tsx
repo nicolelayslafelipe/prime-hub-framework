@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ConfigProvider } from "./contexts/ConfigContext";
 import { OrderProvider } from "./contexts/OrderContext";
+import { CartProvider } from "./contexts/CartContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 // Pages
 import Index from "./pages/Index";
@@ -25,38 +27,42 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ConfigProvider>
-      <OrderProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              {/* Landing */}
-              <Route path="/" element={<Index />} />
+    <ThemeProvider>
+      <ConfigProvider>
+        <OrderProvider>
+          <CartProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Landing */}
+                  <Route path="/" element={<Index />} />
 
-              {/* Admin Panel */}
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/orders" element={<AdminOrders />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
+                  {/* Admin Panel */}
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/orders" element={<AdminOrders />} />
+                  <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/settings" element={<AdminSettings />} />
 
-              {/* Kitchen Panel */}
-              <Route path="/kitchen" element={<KitchenPanel />} />
+                  {/* Kitchen Panel */}
+                  <Route path="/kitchen" element={<KitchenPanel />} />
 
-              {/* Motoboy Panel */}
-              <Route path="/motoboy" element={<MotoboyPanel />} />
+                  {/* Motoboy Panel */}
+                  <Route path="/motoboy" element={<MotoboyPanel />} />
 
-              {/* Client Panel */}
-              <Route path="/client" element={<ClientPanel />} />
+                  {/* Client Panel */}
+                  <Route path="/client" element={<ClientPanel />} />
 
-              {/* 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </OrderProvider>
-    </ConfigProvider>
+                  {/* 404 */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </CartProvider>
+        </OrderProvider>
+      </ConfigProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
