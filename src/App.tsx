@@ -18,6 +18,9 @@ import AuthPage from "./pages/auth/AuthPage";
 
 import ClientPanel from "./pages/client/ClientPanel";
 import ClientProfile from "./pages/client/ClientProfile";
+import ClientOrders from "./pages/client/ClientOrders";
+import ClientAddresses from "./pages/client/ClientAddresses";
+import ClientSettings from "./pages/client/ClientSettings";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -67,9 +70,12 @@ const App = () => (
                       <Route path="/" element={<ClientPanel />} />
                       <Route path="/auth" element={<AuthPage />} />
 
-                      {/* Protected Profile Route - Any authenticated user */}
+                      {/* Protected Client Routes */}
                       <Route element={<ProtectedRoute allowedRoles={['client', 'admin', 'kitchen', 'motoboy']} />}>
                         <Route path="/profile" element={<ClientProfile />} />
+                        <Route path="/orders" element={<ClientOrders />} />
+                        <Route path="/addresses" element={<ClientAddresses />} />
+                        <Route path="/settings" element={<ClientSettings />} />
                       </Route>
 
                       {/* Protected Admin Routes */}

@@ -32,17 +32,30 @@ export function ClientMenu({ isOpen, onClose, onNavigate }: ClientMenuProps) {
   const { user, profile, signOut } = useAuth();
 
   const handleNavigation = (page: string) => {
-    if (page === 'profile') {
-      navigate('/profile');
-      onClose();
-      return;
-    }
-    if (page === 'logout') {
-      handleLogout();
-      return;
-    }
-    onNavigate(page);
     onClose();
+    
+    switch (page) {
+      case 'profile':
+        navigate('/profile');
+        break;
+      case 'orders':
+        navigate('/orders');
+        break;
+      case 'addresses':
+        navigate('/addresses');
+        break;
+      case 'tracking':
+        onNavigate('tracking');
+        break;
+      case 'settings':
+        navigate('/settings');
+        break;
+      case 'logout':
+        handleLogout();
+        break;
+      default:
+        onNavigate(page);
+    }
   };
 
   const handleLogout = async () => {
