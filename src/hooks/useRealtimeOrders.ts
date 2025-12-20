@@ -19,6 +19,9 @@ interface DbOrder {
   motoboy_id: string | null;
   created_at: string;
   updated_at: string;
+  needs_change: boolean | null;
+  change_for: number | null;
+  change_amount: number | null;
 }
 
 interface DbOrderItem {
@@ -51,6 +54,9 @@ const mapDbOrderToOrder = (dbOrder: DbOrder, items: OrderItem[]): Order => ({
   createdAt: new Date(dbOrder.created_at),
   updatedAt: new Date(dbOrder.updated_at),
   items,
+  needsChange: dbOrder.needs_change || false,
+  changeFor: dbOrder.change_for ? Number(dbOrder.change_for) : undefined,
+  changeAmount: dbOrder.change_amount ? Number(dbOrder.change_amount) : undefined,
 });
 
 const mapDbItemToOrderItem = (dbItem: DbOrderItem): OrderItem => ({
@@ -200,6 +206,9 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
           payment_method: orderData.paymentMethod,
           notes: orderData.notes || null,
           motoboy_id: orderData.motoboyId || null,
+          needs_change: orderData.needsChange || false,
+          change_for: orderData.changeFor || null,
+          change_amount: orderData.changeAmount || null,
         })
         .select()
         .single();

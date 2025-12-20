@@ -51,6 +51,10 @@ export interface Order {
   createdAt: Date;
   updatedAt: Date;
   estimatedDeliveryTime?: Date;
+  // Change fields for cash payment
+  needsChange?: boolean;
+  changeFor?: number;
+  changeAmount?: number;
 }
 
 export interface EstablishmentSettings {

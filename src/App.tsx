@@ -9,6 +9,7 @@ import { CartProvider } from "./contexts/CartContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProductProvider } from "./contexts/ProductContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SidebarProvider } from "./contexts/SidebarContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Pages
@@ -68,29 +69,29 @@ const App = () => (
 
                       {/* Protected Admin Routes */}
                       <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                        <Route path="/admin" element={<AdminDashboard />} />
-                        <Route path="/admin/kanban" element={<AdminKanban />} />
-                        <Route path="/admin/orders" element={<AdminOrders />} />
-                        <Route path="/admin/clients" element={<AdminClients />} />
-                        <Route path="/admin/categories" element={<AdminCategories />} />
-                        <Route path="/admin/products" element={<AdminProducts />} />
-                        <Route path="/admin/pickup" element={<AdminPickup />} />
-                        <Route path="/admin/online-payment" element={<AdminOnlinePayment />} />
-                        <Route path="/admin/mercadopago" element={<AdminMercadoPago />} />
-                        <Route path="/admin/payment-methods" element={<AdminPaymentMethods />} />
-                        <Route path="/admin/pix-messages" element={<AdminPixMessages />} />
-                        <Route path="/admin/marketing" element={<AdminMarketing />} />
-                        <Route path="/admin/loyalty" element={<AdminLoyalty />} />
-                        <Route path="/admin/reviews" element={<AdminReviews />} />
-                        <Route path="/admin/system" element={<AdminSystem />} />
-                        <Route path="/admin/hours" element={<AdminBusinessHours />} />
-                        <Route path="/admin/delivery-config" element={<AdminDeliveryConfig />} />
-                        <Route path="/admin/messages" element={<AdminEditableMessages />} />
-                        <Route path="/admin/verification" element={<AdminFirstOrderVerification />} />
-                        <Route path="/admin/recaptcha" element={<AdminRecaptcha />} />
-                        <Route path="/admin/api-config" element={<AdminApiConfig />} />
-                        <Route path="/admin/users" element={<AdminUsers />} />
-                        <Route path="/admin/settings" element={<AdminSettings />} />
+                        <Route path="/admin" element={<SidebarProvider><AdminDashboard /></SidebarProvider>} />
+                        <Route path="/admin/kanban" element={<SidebarProvider><AdminKanban /></SidebarProvider>} />
+                        <Route path="/admin/orders" element={<SidebarProvider><AdminOrders /></SidebarProvider>} />
+                        <Route path="/admin/clients" element={<SidebarProvider><AdminClients /></SidebarProvider>} />
+                        <Route path="/admin/categories" element={<SidebarProvider><AdminCategories /></SidebarProvider>} />
+                        <Route path="/admin/products" element={<SidebarProvider><AdminProducts /></SidebarProvider>} />
+                        <Route path="/admin/pickup" element={<SidebarProvider><AdminPickup /></SidebarProvider>} />
+                        <Route path="/admin/online-payment" element={<SidebarProvider><AdminOnlinePayment /></SidebarProvider>} />
+                        <Route path="/admin/mercadopago" element={<SidebarProvider><AdminMercadoPago /></SidebarProvider>} />
+                        <Route path="/admin/payment-methods" element={<SidebarProvider><AdminPaymentMethods /></SidebarProvider>} />
+                        <Route path="/admin/pix-messages" element={<SidebarProvider><AdminPixMessages /></SidebarProvider>} />
+                        <Route path="/admin/marketing" element={<SidebarProvider><AdminMarketing /></SidebarProvider>} />
+                        <Route path="/admin/loyalty" element={<SidebarProvider><AdminLoyalty /></SidebarProvider>} />
+                        <Route path="/admin/reviews" element={<SidebarProvider><AdminReviews /></SidebarProvider>} />
+                        <Route path="/admin/system" element={<SidebarProvider><AdminSystem /></SidebarProvider>} />
+                        <Route path="/admin/hours" element={<SidebarProvider><AdminBusinessHours /></SidebarProvider>} />
+                        <Route path="/admin/delivery-config" element={<SidebarProvider><AdminDeliveryConfig /></SidebarProvider>} />
+                        <Route path="/admin/messages" element={<SidebarProvider><AdminEditableMessages /></SidebarProvider>} />
+                        <Route path="/admin/verification" element={<SidebarProvider><AdminFirstOrderVerification /></SidebarProvider>} />
+                        <Route path="/admin/recaptcha" element={<SidebarProvider><AdminRecaptcha /></SidebarProvider>} />
+                        <Route path="/admin/api-config" element={<SidebarProvider><AdminApiConfig /></SidebarProvider>} />
+                        <Route path="/admin/users" element={<SidebarProvider><AdminUsers /></SidebarProvider>} />
+                        <Route path="/admin/settings" element={<SidebarProvider><AdminSettings /></SidebarProvider>} />
                       </Route>
 
                       {/* Protected Kitchen Route */}

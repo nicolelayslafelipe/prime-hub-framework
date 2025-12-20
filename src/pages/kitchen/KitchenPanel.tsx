@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderStatus } from '@/types';
-import { Clock, ChefHat, CheckCircle2 } from 'lucide-react';
+import { Clock, ChefHat, CheckCircle2, Coins } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -128,11 +128,19 @@ export default function KitchenPanel() {
                           </div>
                         ))}
                       </div>
-                      {order.notes && (
-                        <div className="bg-warning/10 rounded-lg px-3 py-2 mb-4">
-                          <p className="text-sm text-warning font-medium">Obs: {order.notes}</p>
-                        </div>
-                      )}
+                                      {order.notes && (
+                                        <div className="bg-warning/10 rounded-lg px-3 py-2 mb-4">
+                                          <p className="text-sm text-warning font-medium">Obs: {order.notes}</p>
+                                        </div>
+                                      )}
+                                      {order.needsChange && order.changeFor && order.changeAmount !== undefined && (
+                                        <div className="bg-accent/10 rounded-lg px-3 py-2 mb-4 flex items-center gap-2">
+                                          <Coins className="h-4 w-4 text-accent" />
+                                          <span className="text-sm font-medium text-accent">
+                                            Troco: R$ {order.changeAmount.toFixed(2)} (paga R$ {order.changeFor.toFixed(2)})
+                                          </span>
+                                        </div>
+                                      )}
                       <Button
                         className="w-full"
                         onClick={() => handleUpdateStatus(order.id, order.status)}
