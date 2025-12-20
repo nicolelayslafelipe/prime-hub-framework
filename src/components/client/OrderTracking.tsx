@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Order, OrderStatus } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   ArrowLeft, 
   Clock, 
@@ -8,7 +10,8 @@ import {
   Package, 
   Truck, 
   CheckCircle2,
-  MapPin
+  MapPin,
+  Wifi
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -37,7 +40,57 @@ const statusIndex: Record<OrderStatus, number> = {
   cancelled: -1,
 };
 
-export function OrderTracking({ isOpen, onClose, order }: OrderTrackingProps) {
+export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTrackingProps) {
+  const [order, setOrder] = useState<Order | null>(initialOrder);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Update local order when prop changes
+  useEffect(() => {
+    setOrder(initialOrder);
+  }, [initialOrder]);
+
+  // Subscribe to realtime updates for this specific order
+  useEffect(() => {
+    if (!isOpen || !initialOrder?.id) return;
+
+    const channel = supabase
+      .channel(`order-tracking-${initialOrder.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${initialOrder.id}`,
+        },
+        (payload) => {
+          console.log('Order updated in tracking:', payload);
+          const updatedOrder = payload.new as {
+            id: string;
+            status: string;
+            updated_at: string;
+          };
+          
+          setOrder((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: updatedOrder.status as OrderStatus,
+                  updatedAt: new Date(updatedOrder.updated_at),
+                }
+              : null
+          );
+        }
+      )
+      .subscribe((status) => {
+        setIsConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isOpen, initialOrder?.id]);
+
   if (!order) return null;
 
   const currentStepIndex = statusIndex[order.status];
@@ -51,10 +104,16 @@ export function OrderTracking({ isOpen, onClose, order }: OrderTrackingProps) {
             <Button variant="ghost" size="icon" onClick={onClose}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
+            <div className="flex-1">
               <SheetTitle className="text-xl font-bold">Pedido #{order.orderNumber}</SheetTitle>
               <p className="text-sm text-muted-foreground">Acompanhe seu pedido em tempo real</p>
             </div>
+            {isConnected && (
+              <div className="flex items-center gap-1 text-xs text-success">
+                <Wifi className="h-3 w-3" />
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+              </div>
+            )}
           </div>
         </SheetHeader>
 
@@ -84,7 +143,7 @@ export function OrderTracking({ isOpen, onClose, order }: OrderTrackingProps) {
                       {index < statusSteps.length - 1 && (
                         <div 
                           className={cn(
-                            "absolute left-5 w-0.5 h-8 translate-y-10",
+                            "absolute left-5 w-0.5 h-8 translate-y-10 transition-colors duration-500",
                             isCompleted ? 'bg-primary' : 'bg-border'
                           )}
                           style={{ top: `${index * 64 + 32}px` }}
@@ -94,8 +153,8 @@ export function OrderTracking({ isOpen, onClose, order }: OrderTrackingProps) {
                       {/* Icon */}
                       <div 
                         className={cn(
-                          "relative z-10 h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
-                          isCurrent && 'ring-4 ring-primary/20',
+                          "relative z-10 h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500",
+                          isCurrent && 'ring-4 ring-primary/20 animate-pulse',
                           isCompleted ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
                         )}
                       >
@@ -105,7 +164,7 @@ export function OrderTracking({ isOpen, onClose, order }: OrderTrackingProps) {
                       {/* Content */}
                       <div className="flex-1 pt-2">
                         <p className={cn(
-                          "font-medium",
+                          "font-medium transition-colors duration-500",
                           isCompleted ? 'text-foreground' : 'text-muted-foreground'
                         )}>
                           {step.label}

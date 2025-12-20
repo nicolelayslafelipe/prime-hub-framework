@@ -1,8 +1,10 @@
 import { useOrders } from '@/contexts/OrderContext';
 import { Logo } from '@/components/shared/Logo';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { OrderStatus } from '@/types';
 import { Clock, ChefHat, CheckCircle2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -30,17 +32,36 @@ const statusActions: Record<OrderStatus, string> = {
   cancelled: '',
 };
 
+function OrderCardSkeleton() {
+  return (
+    <Card className="p-4 glass">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <Skeleton className="h-8 w-20 mb-2" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <Skeleton className="h-6 w-16 rounded-full" />
+      </div>
+      <div className="space-y-2 mb-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+      <Skeleton className="h-10 w-full" />
+    </Card>
+  );
+}
+
 export default function KitchenPanel() {
-  const { orders, updateOrderStatus } = useOrders();
+  const { orders, updateOrderStatus, isLoading, connectionStatus } = useOrders();
 
   const kitchenOrders = orders.filter((order) =>
     kitchenStatuses.includes(order.status)
   );
 
-  const handleUpdateStatus = (orderId: string, currentStatus: OrderStatus) => {
+  const handleUpdateStatus = async (orderId: string, currentStatus: OrderStatus) => {
     const nextStatus = statusFlow[currentStatus];
     if (nextStatus) {
-      updateOrderStatus(orderId, nextStatus);
+      await updateOrderStatus(orderId, nextStatus);
     }
   };
 
@@ -61,6 +82,7 @@ export default function KitchenPanel() {
             <div className="text-sm text-muted-foreground">
               {kitchenOrders.length} pedidos em andamento
             </div>
+            <ConnectionStatus status={connectionStatus} />
           </div>
         </div>
       </header>
@@ -78,41 +100,48 @@ export default function KitchenPanel() {
               </span>
             </div>
             <div className="space-y-4">
-              {orders
-                .filter((o) => o.status === 'pending')
-                .map((order) => (
-                  <Card key={order.id} className="p-4 glass animate-slide-up border-l-4 border-l-status-pending">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <span className="text-2xl font-bold">#{order.orderNumber}</span>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDistanceToNow(order.createdAt, { addSuffix: true, locale: ptBR })}
+              {isLoading ? (
+                <>
+                  <OrderCardSkeleton />
+                  <OrderCardSkeleton />
+                </>
+              ) : (
+                orders
+                  .filter((o) => o.status === 'pending')
+                  .map((order) => (
+                    <Card key={order.id} className="p-4 glass animate-fade-in border-l-4 border-l-status-pending">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <span className="text-2xl font-bold">#{order.orderNumber}</span>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDistanceToNow(order.createdAt, { addSuffix: true, locale: ptBR })}
+                          </div>
                         </div>
+                        <StatusBadge status={order.status} size="lg" />
                       </div>
-                      <StatusBadge status={order.status} size="lg" />
-                    </div>
-                    <div className="space-y-2 mb-4">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-2 py-2 border-b border-border/30 last:border-0">
-                          <span className="text-lg font-bold text-primary">{item.quantity}x</span>
-                          <span className="font-medium">{item.productName}</span>
+                      <div className="space-y-2 mb-4">
+                        {order.items.map((item) => (
+                          <div key={item.id} className="flex items-center gap-2 py-2 border-b border-border/30 last:border-0">
+                            <span className="text-lg font-bold text-primary">{item.quantity}x</span>
+                            <span className="font-medium">{item.productName}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {order.notes && (
+                        <div className="bg-warning/10 rounded-lg px-3 py-2 mb-4">
+                          <p className="text-sm text-warning font-medium">Obs: {order.notes}</p>
                         </div>
-                      ))}
-                    </div>
-                    {order.notes && (
-                      <div className="bg-warning/10 rounded-lg px-3 py-2 mb-4">
-                        <p className="text-sm text-warning font-medium">Obs: {order.notes}</p>
-                      </div>
-                    )}
-                    <Button
-                      className="w-full"
-                      onClick={() => handleUpdateStatus(order.id, order.status)}
-                    >
-                      {statusActions[order.status]}
-                    </Button>
-                  </Card>
-                ))}
+                      )}
+                      <Button
+                        className="w-full"
+                        onClick={() => handleUpdateStatus(order.id, order.status)}
+                      >
+                        {statusActions[order.status]}
+                      </Button>
+                    </Card>
+                  ))
+              )}
             </div>
           </div>
 
@@ -126,37 +155,43 @@ export default function KitchenPanel() {
               </span>
             </div>
             <div className="space-y-4">
-              {orders
-                .filter((o) => o.status === 'preparing')
-                .map((order) => (
-                  <Card key={order.id} className="p-4 glass animate-slide-up border-l-4 border-l-status-preparing">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <span className="text-2xl font-bold">#{order.orderNumber}</span>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDistanceToNow(order.createdAt, { addSuffix: true, locale: ptBR })}
+              {isLoading ? (
+                <>
+                  <OrderCardSkeleton />
+                </>
+              ) : (
+                orders
+                  .filter((o) => o.status === 'preparing')
+                  .map((order) => (
+                    <Card key={order.id} className="p-4 glass animate-fade-in border-l-4 border-l-status-preparing">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <span className="text-2xl font-bold">#{order.orderNumber}</span>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDistanceToNow(order.createdAt, { addSuffix: true, locale: ptBR })}
+                          </div>
                         </div>
+                        <StatusBadge status={order.status} size="lg" />
                       </div>
-                      <StatusBadge status={order.status} size="lg" />
-                    </div>
-                    <div className="space-y-2 mb-4">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-2 py-2 border-b border-border/30 last:border-0">
-                          <span className="text-lg font-bold text-primary">{item.quantity}x</span>
-                          <span className="font-medium">{item.productName}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <Button
-                      className="w-full bg-success hover:bg-success/90"
-                      onClick={() => handleUpdateStatus(order.id, order.status)}
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      {statusActions[order.status]}
-                    </Button>
-                  </Card>
-                ))}
+                      <div className="space-y-2 mb-4">
+                        {order.items.map((item) => (
+                          <div key={item.id} className="flex items-center gap-2 py-2 border-b border-border/30 last:border-0">
+                            <span className="text-lg font-bold text-primary">{item.quantity}x</span>
+                            <span className="font-medium">{item.productName}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        className="w-full bg-success hover:bg-success/90"
+                        onClick={() => handleUpdateStatus(order.id, order.status)}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        {statusActions[order.status]}
+                      </Button>
+                    </Card>
+                  ))
+              )}
             </div>
           </div>
 
@@ -170,36 +205,42 @@ export default function KitchenPanel() {
               </span>
             </div>
             <div className="space-y-4">
-              {orders
-                .filter((o) => o.status === 'ready')
-                .map((order) => (
-                  <Card key={order.id} className="p-4 glass animate-slide-up border-l-4 border-l-status-ready">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <span className="text-2xl font-bold">#{order.orderNumber}</span>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDistanceToNow(order.createdAt, { addSuffix: true, locale: ptBR })}
+              {isLoading ? (
+                <>
+                  <OrderCardSkeleton />
+                </>
+              ) : (
+                orders
+                  .filter((o) => o.status === 'ready')
+                  .map((order) => (
+                    <Card key={order.id} className="p-4 glass animate-fade-in border-l-4 border-l-status-ready">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <span className="text-2xl font-bold">#{order.orderNumber}</span>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDistanceToNow(order.createdAt, { addSuffix: true, locale: ptBR })}
+                          </div>
                         </div>
+                        <StatusBadge status={order.status} size="lg" />
                       </div>
-                      <StatusBadge status={order.status} size="lg" />
-                    </div>
-                    <div className="space-y-2 mb-4">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-2 py-2 border-b border-border/30 last:border-0">
-                          <span className="text-lg font-bold text-primary">{item.quantity}x</span>
-                          <span className="font-medium">{item.productName}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="bg-success/10 rounded-lg px-3 py-2 text-center">
-                      <p className="text-sm text-success font-medium flex items-center justify-center gap-2">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Aguardando retirada
-                      </p>
-                    </div>
-                  </Card>
-                ))}
+                      <div className="space-y-2 mb-4">
+                        {order.items.map((item) => (
+                          <div key={item.id} className="flex items-center gap-2 py-2 border-b border-border/30 last:border-0">
+                            <span className="text-lg font-bold text-primary">{item.quantity}x</span>
+                            <span className="font-medium">{item.productName}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="bg-success/10 rounded-lg px-3 py-2 text-center">
+                        <p className="text-sm text-success font-medium flex items-center justify-center gap-2">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Aguardando retirada
+                        </p>
+                      </div>
+                    </Card>
+                  ))
+              )}
             </div>
           </div>
         </div>
