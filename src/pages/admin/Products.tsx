@@ -1,22 +1,22 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useProducts } from '@/contexts/ProductContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
-import { ImageUpload } from '@/components/admin/ImageUpload';
+import { ProductForm } from '@/components/admin/ProductForm';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { ErrorBoundary, ModalErrorFallback } from '@/components/shared/ErrorBoundary';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Product } from '@/data/mockProducts';
 import { cn } from '@/lib/utils';
 
 // Check if image is a real URL or just an emoji
 const isRealImage = (image: string): boolean => {
+  if (!image || typeof image !== 'string') return false;
   return image.startsWith('http') || image.startsWith('/') || image.startsWith('data:');
 };
 
@@ -38,31 +38,31 @@ export default function AdminProducts() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
   const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState({ 
-    name: '', 
-    description: '', 
-    price: '', 
-    categoryId: '', 
-    image: '', 
-    tag: '',
-    isAvailable: true,
-  });
+  const [modalKey, setModalKey] = useState(0); // Key para forçar re-render do modal
 
   const filteredProducts = filter === 'all' ? products : products.filter(p => p.categoryId === filter);
 
-  const handleSubmit = async () => {
-    if (!form.name || !form.price || !form.categoryId) return;
+  const handleSubmit = async (formData: {
+    name: string;
+    description: string;
+    price: string;
+    categoryId: string;
+    image: string;
+    tag: string;
+    isAvailable: boolean;
+  }) => {
+    if (!formData.name || !formData.price || !formData.categoryId) return;
     
     setIsSaving(true);
     try {
       const data = { 
-        name: form.name, 
-        description: form.description, 
-        price: parseFloat(form.price) || 0, 
-        categoryId: form.categoryId, 
-        image: form.image || '🍔', 
-        tag: form.tag as Product['tag'], 
-        isAvailable: form.isAvailable, 
+        name: formData.name, 
+        description: formData.description, 
+        price: parseFloat(formData.price) || 0, 
+        categoryId: formData.categoryId, 
+        image: formData.image || '🍔', 
+        tag: formData.tag as Product['tag'], 
+        isAvailable: formData.isAvailable, 
         preparationTime: 15 
       };
       
@@ -79,25 +79,30 @@ export default function AdminProducts() {
     }
   };
 
-  const handleEdit = (product: Product) => {
-    setEditingProduct(product);
-    setForm({ 
-      name: product.name, 
-      description: product.description, 
-      price: product.price.toString(), 
-      categoryId: product.categoryId, 
-      image: product.image, 
-      tag: product.tag || '',
-      isAvailable: product.isAvailable,
-    });
-    setIsModalOpen(true);
-  };
+  const handleEdit = useCallback((product: Product) => {
+    try {
+      // Incrementa key para forçar re-render limpo do modal
+      setModalKey(prev => prev + 1);
+      setEditingProduct(product);
+      setIsModalOpen(true);
+    } catch (err) {
+      console.error('Error preparing edit:', err);
+    }
+  }, []);
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
+  const handleOpenNewProduct = useCallback(() => {
+    setModalKey(prev => prev + 1);
     setEditingProduct(null);
-    setForm({ name: '', description: '', price: '', categoryId: '', image: '', tag: '', isAvailable: true });
-  };
+    setIsModalOpen(true);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+    // Limpa o produto após fechar para evitar flash de dados antigos
+    setTimeout(() => {
+      setEditingProduct(null);
+    }, 150);
+  }, []);
 
   const handleDelete = async () => {
     if (deleteId) {
@@ -138,13 +143,13 @@ export default function AdminProducts() {
             {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button onClick={() => setIsModalOpen(true)} className="gap-2"><Plus className="h-4 w-4" /> Novo Produto</Button>
+        <Button onClick={handleOpenNewProduct} className="gap-2"><Plus className="h-4 w-4" /> Novo Produto</Button>
       </div>
 
       {filteredProducts.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">Nenhum produto encontrado.</p>
-          <Button onClick={() => setIsModalOpen(true)} variant="outline" className="mt-4 gap-2">
+          <Button onClick={handleOpenNewProduct} variant="outline" className="mt-4 gap-2">
             <Plus className="h-4 w-4" /> Adicionar primeiro produto
           </Button>
         </div>
@@ -163,11 +168,16 @@ export default function AdminProducts() {
                         src={product.image} 
                         alt={product.name}
                         className="h-full w-full object-cover"
+                        onError={(e) => {
+                          // Fallback para placeholder se imagem falhar
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement!.innerHTML = '<div class="h-full w-full bg-muted flex items-center justify-center text-lg">🍔</div>';
+                        }}
                       />
                     </div>
                   ) : (
                     <div className="h-14 w-14 rounded-lg bg-muted flex items-center justify-center text-2xl flex-shrink-0">
-                      {product.image}
+                      {product.image || '🍔'}
                     </div>
                   )}
                   
@@ -202,129 +212,27 @@ export default function AdminProducts() {
         </div>
       )}
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      {/* Modal com Error Boundary */}
+      <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
         <DialogContent className="bg-card border-border max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingProduct ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {/* Product Image Upload */}
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">Foto do Produto</label>
-              <ImageUpload 
-                value={isRealImage(form.image) ? form.image : undefined}
-                onChange={(url) => setForm(f => ({ ...f, image: url }))}
-                onRemove={() => setForm(f => ({ ...f, image: '' }))}
-                aspectRatio="square"
-                bucket="products"
-                path={`product-${editingProduct?.id || 'new'}`}
-                placeholder="Adicione uma foto do produto"
-              />
-              {!isRealImage(form.image) && form.image && (
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  Emoji atual: {form.image}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">
-                Nome do produto <span className="text-destructive">*</span>
-              </label>
-              <Input 
-                placeholder="Ex: X-Burger Especial" 
-                value={form.name} 
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className={cn(!form.name && "border-destructive/50")}
+          <ErrorBoundary 
+            fallback={<ModalErrorFallback onClose={handleCloseModal} />}
+            onReset={handleCloseModal}
+          >
+            <DialogHeader>
+              <DialogTitle>{editingProduct ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <ProductForm
+                key={modalKey}
+                product={editingProduct}
+                categories={categories}
+                onSubmit={handleSubmit}
+                onCancel={handleCloseModal}
+                isSaving={isSaving}
               />
             </div>
-            
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Descrição</label>
-              <Textarea 
-                placeholder="Descrição completa do produto" 
-                value={form.description} 
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))} 
-                rows={3} 
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-muted-foreground mb-1 block">
-                  Preço <span className="text-destructive">*</span>
-                </label>
-                <Input 
-                  type="number" 
-                  placeholder="0.00" 
-                  value={form.price} 
-                  onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                  className={cn(!form.price && "border-destructive/50")}
-                />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1 block">
-                  Categoria <span className="text-destructive">*</span>
-                </label>
-                <Select value={form.categoryId} onValueChange={v => setForm(f => ({ ...f, categoryId: v }))}>
-                  <SelectTrigger className={cn(!form.categoryId && "border-destructive/50")}>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Tag (opcional)</label>
-              <Select value={form.tag} onValueChange={v => setForm(f => ({ ...f, tag: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione uma tag" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Sem tag</SelectItem>
-                  <SelectItem value="NOVO">NOVO</SelectItem>
-                  <SelectItem value="POPULAR">POPULAR</SelectItem>
-                  <SelectItem value="PROMOÇÃO">PROMOÇÃO</SelectItem>
-                  <SelectItem value="MAIS VENDIDO">MAIS VENDIDO</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status Toggle */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div>
-                <label className="text-sm font-medium">Produto ativo</label>
-                <p className="text-xs text-muted-foreground">
-                  {form.isAvailable ? 'Visível no cardápio' : 'Oculto do cardápio'}
-                </p>
-              </div>
-              <Switch 
-                checked={form.isAvailable} 
-                onCheckedChange={(checked) => setForm(f => ({ ...f, isAvailable: checked }))} 
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCloseModal} disabled={isSaving}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleSubmit} 
-              disabled={!form.name || !form.price || !form.categoryId || isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                'Salvar'
-              )}
-            </Button>
-          </DialogFooter>
+          </ErrorBoundary>
         </DialogContent>
       </Dialog>
 

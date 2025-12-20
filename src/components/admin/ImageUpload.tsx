@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon, Loader2, Check } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useImageUpload, ImageBucket } from '@/hooks/useImageUpload';
@@ -18,6 +18,12 @@ interface ImageUploadProps {
   maxSizeMB?: number;
 }
 
+// Valida se é uma URL de imagem válida
+const isValidImageUrl = (url: string | undefined | null): boolean => {
+  if (!url || typeof url !== 'string') return false;
+  return url.startsWith('http') || url.startsWith('/') || url.startsWith('data:') || url.startsWith('blob:');
+};
+
 export function ImageUpload({
   value,
   onChange,
@@ -30,8 +36,12 @@ export function ImageUpload({
   maxSizeMB = 5,
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { uploadImage, deleteImage, isUploading, progress, error } = useImageUpload();
+
+  // Verifica se temos uma URL válida e a imagem não falhou ao carregar
+  const hasValidImage = isValidImageUrl(value) && !imageError;
 
   const aspectClasses = {
     square: 'aspect-square',
@@ -39,48 +49,94 @@ export function ImageUpload({
     banner: 'aspect-[3/1]',
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
-  };
+  }, []);
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      handleFile(file);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    try {
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        handleFile(file);
+      }
+    } catch (err) {
+      console.error('Error handling dropped file:', err);
+      toast.error('Erro ao processar arquivo');
     }
-  };
+  }, []);
 
   const handleFile = async (file: File) => {
-    const url = await uploadImage(file, { bucket, path, maxSizeMB });
-    
-    if (url) {
-      onChange(url);
-      toast.success('Imagem enviada com sucesso!');
-    } else if (error) {
-      toast.error(error);
+    try {
+      setImageError(false);
+      const url = await uploadImage(file, { bucket, path, maxSizeMB });
+      
+      if (url) {
+        onChange(url);
+        toast.success('Imagem enviada com sucesso!');
+      } else if (error) {
+        toast.error(error);
+      }
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      toast.error('Erro ao fazer upload da imagem');
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFile(file);
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = e.target.files?.[0];
+      if (file) {
+        handleFile(file);
+      }
+    } catch (err) {
+      console.error('Error handling file input:', err);
+      toast.error('Erro ao processar arquivo');
     }
-  };
+    // Reset input value para permitir selecionar o mesmo arquivo novamente
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }, []);
 
-  const handleRemove = async () => {
-    if (value && onRemove) {
-      await deleteImage(bucket, value);
-      onRemove();
+  const handleRemove = useCallback(async () => {
+    try {
+      if (value && onRemove) {
+        await deleteImage(bucket, value);
+        setImageError(false);
+        onRemove();
+      }
+    } catch (err) {
+      console.error('Error removing image:', err);
+      toast.error('Erro ao remover imagem');
     }
-  };
+  }, [value, onRemove, bucket, deleteImage]);
+
+  const handleImageError = useCallback(() => {
+    console.warn('Image failed to load:', value);
+    setImageError(true);
+  }, [value]);
+
+  const handleImageLoad = useCallback(() => {
+    setImageError(false);
+  }, []);
+
+  const triggerFileSelect = useCallback(() => {
+    if (!isUploading && inputRef.current) {
+      inputRef.current.click();
+    }
+  }, [isUploading]);
 
   return (
     <div className={cn('relative', className)}>
@@ -93,15 +149,18 @@ export function ImageUpload({
         disabled={isUploading}
       />
       
-      {value ? (
+      {hasValidImage ? (
         <div className={cn('relative rounded-xl overflow-hidden border border-border bg-muted/30', aspectClasses[aspectRatio])}>
           <img
             src={value}
             alt="Preview"
             className="w-full h-full object-cover"
+            onError={handleImageError}
+            onLoad={handleImageLoad}
           />
           {onRemove && (
             <Button
+              type="button"
               variant="destructive"
               size="icon"
               className="absolute top-2 right-2 h-8 w-8 rounded-lg shadow-lg"
@@ -112,10 +171,11 @@ export function ImageUpload({
             </Button>
           )}
           <Button
+            type="button"
             variant="secondary"
             size="sm"
             className="absolute bottom-2 right-2 rounded-lg shadow-lg"
-            onClick={() => inputRef.current?.click()}
+            onClick={triggerFileSelect}
             disabled={isUploading}
           >
             {isUploading ? (
@@ -136,7 +196,7 @@ export function ImageUpload({
               : 'border-border hover:border-primary/50 hover:bg-muted/50',
             isUploading && 'pointer-events-none opacity-70'
           )}
-          onClick={() => !isUploading && inputRef.current?.click()}
+          onClick={triggerFileSelect}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -148,6 +208,14 @@ export function ImageUpload({
                 <Progress value={progress} className="h-1.5" />
               </div>
               <p className="text-sm text-muted-foreground">Enviando...</p>
+            </div>
+          ) : imageError ? (
+            <div className="flex flex-col items-center gap-2 p-4 text-center">
+              <div className="p-3 rounded-xl bg-destructive/10">
+                <ImageIcon className="h-6 w-6 text-destructive" />
+              </div>
+              <p className="text-sm text-destructive">Erro ao carregar imagem</p>
+              <p className="text-xs text-muted-foreground">Clique para enviar outra</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 p-4 text-center">
