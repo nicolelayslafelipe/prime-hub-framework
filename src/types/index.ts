@@ -63,6 +63,7 @@ export interface EstablishmentSettings {
   description?: string;
   logo?: string;
   banner?: string;
+  bannerText?: string;
   showBanner?: boolean;
   isOpen: boolean;
   isDeliveryEnabled: boolean;
