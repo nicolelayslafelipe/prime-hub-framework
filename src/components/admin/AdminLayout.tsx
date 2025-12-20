@@ -9,9 +9,10 @@ interface AdminLayoutProps {
   children: ReactNode;
   title: string;
   subtitle?: string;
+  headerRight?: ReactNode;
 }
 
-export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
+export function AdminLayout({ children, title, subtitle, headerRight }: AdminLayoutProps) {
   const [sidebarCollapsed] = useState(false);
 
   return (
@@ -35,6 +36,7 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
             </div>
 
             <div className="flex items-center gap-3">
+              {headerRight}
               <div className="relative hidden md:block">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input

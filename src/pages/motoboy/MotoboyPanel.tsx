@@ -1,27 +1,46 @@
 import { useOrders } from '@/contexts/OrderContext';
 import { Logo } from '@/components/shared/Logo';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { OrderStatus } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Clock, Bike, MapPin, Phone, CheckCircle2, Navigation } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const motoboyStatuses: OrderStatus[] = ['ready', 'out_for_delivery'];
+function OrderCardSkeleton() {
+  return (
+    <Card className="p-4 glass">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <Skeleton className="h-6 w-16 mb-2" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <Skeleton className="h-6 w-16 rounded-full" />
+      </div>
+      <div className="space-y-2 mb-4">
+        <Skeleton className="h-5 w-full" />
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-5 w-1/2" />
+      </div>
+      <Skeleton className="h-10 w-full" />
+    </Card>
+  );
+}
 
 export default function MotoboyPanel() {
-  const { orders, updateOrderStatus } = useOrders();
+  const { orders, updateOrderStatus, isLoading, connectionStatus } = useOrders();
 
   const availableOrders = orders.filter((o) => o.status === 'ready');
   const myDeliveries = orders.filter((o) => o.status === 'out_for_delivery');
 
-  const handleAcceptOrder = (orderId: string) => {
-    updateOrderStatus(orderId, 'out_for_delivery');
+  const handleAcceptOrder = async (orderId: string) => {
+    await updateOrderStatus(orderId, 'out_for_delivery');
   };
 
-  const handleCompleteDelivery = (orderId: string) => {
-    updateOrderStatus(orderId, 'delivered');
+  const handleCompleteDelivery = async (orderId: string) => {
+    await updateOrderStatus(orderId, 'delivered');
   };
 
   return (
@@ -38,10 +57,7 @@ export default function MotoboyPanel() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-success/20 text-success px-3 py-1.5 rounded-full">
-              <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
-              <span className="text-sm font-medium">Online</span>
-            </div>
+            <ConnectionStatus status={connectionStatus} />
           </div>
         </div>
       </header>
@@ -59,9 +75,14 @@ export default function MotoboyPanel() {
               </span>
             </div>
             <div className="space-y-4">
-              {availableOrders.length > 0 ? (
+              {isLoading ? (
+                <>
+                  <OrderCardSkeleton />
+                  <OrderCardSkeleton />
+                </>
+              ) : availableOrders.length > 0 ? (
                 availableOrders.map((order) => (
-                  <Card key={order.id} className="p-4 glass animate-slide-up">
+                  <Card key={order.id} className="p-4 glass animate-fade-in">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <span className="text-xl font-bold">#{order.orderNumber}</span>
@@ -112,9 +133,11 @@ export default function MotoboyPanel() {
               </span>
             </div>
             <div className="space-y-4">
-              {myDeliveries.length > 0 ? (
+              {isLoading ? (
+                <OrderCardSkeleton />
+              ) : myDeliveries.length > 0 ? (
                 myDeliveries.map((order) => (
-                  <Card key={order.id} className="p-4 glass animate-slide-up border-l-4 border-l-status-delivering">
+                  <Card key={order.id} className="p-4 glass animate-fade-in border-l-4 border-l-status-delivering">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <span className="text-xl font-bold">#{order.orderNumber}</span>
