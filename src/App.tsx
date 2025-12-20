@@ -16,8 +16,8 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/auth/AuthPage";
 
-// Client Pages
 import ClientPanel from "./pages/client/ClientPanel";
+import ClientProfile from "./pages/client/ClientProfile";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -43,7 +43,7 @@ import AdminEditableMessages from "./pages/admin/EditableMessages";
 import AdminFirstOrderVerification from "./pages/admin/FirstOrderVerification";
 import AdminRecaptcha from "./pages/admin/Recaptcha";
 import AdminApiConfig from "./pages/admin/ApiConfig";
-
+import AdminProfile from "./pages/admin/AdminProfile";
 // Panel Pages
 import KitchenPanel from "./pages/kitchen/KitchenPanel";
 import MotoboyPanel from "./pages/motoboy/MotoboyPanel";
@@ -66,6 +66,11 @@ const App = () => (
                       {/* Public Routes */}
                       <Route path="/" element={<ClientPanel />} />
                       <Route path="/auth" element={<AuthPage />} />
+
+                      {/* Protected Profile Route - Any authenticated user */}
+                      <Route element={<ProtectedRoute allowedRoles={['client', 'admin', 'kitchen', 'motoboy']} />}>
+                        <Route path="/profile" element={<ClientProfile />} />
+                      </Route>
 
                       {/* Protected Admin Routes */}
                       <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
@@ -92,6 +97,7 @@ const App = () => (
                         <Route path="/admin/api-config" element={<SidebarProvider><AdminApiConfig /></SidebarProvider>} />
                         <Route path="/admin/users" element={<SidebarProvider><AdminUsers /></SidebarProvider>} />
                         <Route path="/admin/settings" element={<SidebarProvider><AdminSettings /></SidebarProvider>} />
+                        <Route path="/admin/profile" element={<SidebarProvider><AdminProfile /></SidebarProvider>} />
                       </Route>
 
                       {/* Protected Kitchen Route */}

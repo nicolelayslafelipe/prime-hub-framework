@@ -1,6 +1,9 @@
+import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   User, 
   MapPin, 
@@ -25,9 +28,35 @@ const menuItems = [
 ];
 
 export function ClientMenu({ isOpen, onClose, onNavigate }: ClientMenuProps) {
+  const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
+
   const handleNavigation = (page: string) => {
+    if (page === 'profile') {
+      navigate('/profile');
+      onClose();
+      return;
+    }
+    if (page === 'logout') {
+      handleLogout();
+      return;
+    }
     onNavigate(page);
     onClose();
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    onClose();
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   return (
@@ -35,12 +64,17 @@ export function ClientMenu({ isOpen, onClose, onNavigate }: ClientMenuProps) {
       <SheetContent side="left" className="w-80 p-0 bg-card border-border">
         <SheetHeader className="p-6 pb-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-6 w-6 text-primary" />
-            </div>
+            <Avatar className="h-12 w-12 border-2 border-primary/20">
+              <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.name} />
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                {profile?.name ? getInitials(profile.name) : 'U'}
+              </AvatarFallback>
+            </Avatar>
             <div className="text-left">
-              <SheetTitle className="text-lg font-semibold text-foreground">Olá, Cliente</SheetTitle>
-              <p className="text-sm text-muted-foreground">cliente@email.com</p>
+              <SheetTitle className="text-lg font-semibold text-foreground">
+                Olá, {profile?.name?.split(' ')[0] || 'Cliente'}
+              </SheetTitle>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
           </div>
         </SheetHeader>
