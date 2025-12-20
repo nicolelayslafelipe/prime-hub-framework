@@ -14,7 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      order_items: {
+        Row: {
+          additions: string[] | null
+          id: string
+          notes: string | null
+          order_id: string | null
+          product_id: string
+          product_name: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          additions?: string[] | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          product_id: string
+          product_name: string
+          quantity?: number
+          unit_price: number
+        }
+        Update: {
+          additions?: string[] | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string | null
+          customer_address: string
+          customer_id: string
+          customer_name: string
+          customer_phone: string
+          delivery_fee: number | null
+          id: string
+          motoboy_id: string | null
+          notes: string | null
+          order_number: number
+          payment_method: string
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_address: string
+          customer_id: string
+          customer_name: string
+          customer_phone: string
+          delivery_fee?: number | null
+          id?: string
+          motoboy_id?: string | null
+          notes?: string | null
+          order_number?: number
+          payment_method: string
+          status?: string
+          subtotal: number
+          total: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_address?: string
+          customer_id?: string
+          customer_name?: string
+          customer_phone?: string
+          delivery_fee?: number | null
+          id?: string
+          motoboy_id?: string | null
+          notes?: string | null
+          order_number?: number
+          payment_method?: string
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
