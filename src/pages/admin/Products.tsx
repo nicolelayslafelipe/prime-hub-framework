@@ -4,12 +4,11 @@ import { useProducts } from '@/contexts/ProductContext';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { ErrorBoundary, ModalErrorFallback } from '@/components/shared/ErrorBoundary';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Product } from '@/data/mockProducts';
 import { cn } from '@/lib/utils';
@@ -38,11 +37,11 @@ export default function AdminProducts() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
   const [isSaving, setIsSaving] = useState(false);
-  const [modalKey, setModalKey] = useState(0); // Key para forçar re-render do modal
+  const [modalKey, setModalKey] = useState(0);
 
   const filteredProducts = filter === 'all' ? products : products.filter(p => p.categoryId === filter);
 
-  const handleSubmit = async (formData: {
+  const handleSubmit = useCallback(async (formData: {
     name: string;
     description: string;
     price: string;
@@ -61,7 +60,7 @@ export default function AdminProducts() {
         price: parseFloat(formData.price) || 0, 
         categoryId: formData.categoryId, 
         image: formData.image || '🍔', 
-        tag: formData.tag as Product['tag'], 
+        tag: (formData.tag === 'none' ? '' : formData.tag) as Product['tag'], 
         isAvailable: formData.isAvailable, 
         preparationTime: 15 
       };
@@ -77,17 +76,12 @@ export default function AdminProducts() {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [editingProduct, updateProduct, addProduct]);
 
   const handleEdit = useCallback((product: Product) => {
-    try {
-      // Incrementa key para forçar re-render limpo do modal
-      setModalKey(prev => prev + 1);
-      setEditingProduct(product);
-      setIsModalOpen(true);
-    } catch (err) {
-      console.error('Error preparing edit:', err);
-    }
+    setModalKey(prev => prev + 1);
+    setEditingProduct(product);
+    setIsModalOpen(true);
   }, []);
 
   const handleOpenNewProduct = useCallback(() => {
@@ -98,10 +92,9 @@ export default function AdminProducts() {
 
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
-    // Limpa o produto após fechar para evitar flash de dados antigos
     setTimeout(() => {
       setEditingProduct(null);
-    }, 150);
+    }, 200);
   }, []);
 
   const handleDelete = async () => {
@@ -161,17 +154,22 @@ export default function AdminProducts() {
             return (
               <div key={product.id} className={cn("card-premium p-4 transition-all", !product.isAvailable && "opacity-60")}>
                 <div className="flex items-start gap-3 mb-3">
-                  {/* Product Image Preview */}
                   {hasRealImage ? (
-                    <div className="h-14 w-14 rounded-lg overflow-hidden border border-border/50 flex-shrink-0">
+                    <div className="h-14 w-14 rounded-lg overflow-hidden border border-border/50 flex-shrink-0 bg-muted">
                       <img 
                         src={product.image} 
                         alt={product.name}
                         className="h-full w-full object-cover"
                         onError={(e) => {
-                          // Fallback para placeholder se imagem falhar
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement!.innerHTML = '<div class="h-full w-full bg-muted flex items-center justify-center text-lg">🍔</div>';
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'h-full w-full bg-muted flex items-center justify-center text-lg';
+                            fallback.textContent = '🍔';
+                            parent.appendChild(fallback);
+                          }
                         }}
                       />
                     </div>
@@ -212,27 +210,25 @@ export default function AdminProducts() {
         </div>
       )}
 
-      {/* Modal com Error Boundary */}
+      {/* Modal de Produto */}
       <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
         <DialogContent className="bg-card border-border max-w-lg max-h-[90vh] overflow-y-auto">
-          <ErrorBoundary 
-            fallback={<ModalErrorFallback onClose={handleCloseModal} />}
-            onReset={handleCloseModal}
-          >
-            <DialogHeader>
-              <DialogTitle>{editingProduct ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <ProductForm
-                key={modalKey}
-                product={editingProduct}
-                categories={categories}
-                onSubmit={handleSubmit}
-                onCancel={handleCloseModal}
-                isSaving={isSaving}
-              />
-            </div>
-          </ErrorBoundary>
+          <DialogHeader>
+            <DialogTitle>{editingProduct ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
+            <DialogDescription>
+              {editingProduct ? 'Atualize as informações do produto' : 'Adicione um novo produto ao cardápio'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <ProductForm
+              key={modalKey}
+              product={editingProduct}
+              categories={categories}
+              onSubmit={handleSubmit}
+              onCancel={handleCloseModal}
+              isSaving={isSaving}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 

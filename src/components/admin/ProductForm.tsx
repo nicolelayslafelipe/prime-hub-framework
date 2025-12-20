@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -43,17 +43,30 @@ const defaultFormData: ProductFormData = {
   isAvailable: true,
 };
 
-export function ProductForm({
+function ProductFormComponent({
   product,
-  categories,
+  categories = [],
   onSubmit,
   onCancel,
   isSaving = false,
 }: ProductFormProps) {
-  const [form, setForm] = useState<ProductFormData>(defaultFormData);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [form, setForm] = useState<ProductFormData>(() => {
+    // Inicialização síncrona do estado
+    if (product) {
+      return {
+        name: product.name || '',
+        description: product.description || '',
+        price: product.price?.toString() || '',
+        categoryId: product.categoryId || '',
+        image: product.image || '',
+        tag: product.tag || '',
+        isAvailable: product.isAvailable ?? true,
+      };
+    }
+    return defaultFormData;
+  });
 
-  // Inicializa o formulário com dados do produto (se editando)
+  // Atualiza formulário quando produto muda
   useEffect(() => {
     if (product) {
       setForm({
@@ -68,25 +81,31 @@ export function ProductForm({
     } else {
       setForm(defaultFormData);
     }
-    setIsInitialized(true);
-  }, [product]);
+  }, [product?.id]); // Só atualiza quando o ID muda
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.price || !form.categoryId) return;
-    await onSubmit(form);
+    
+    try {
+      await onSubmit(form);
+    } catch (err) {
+      console.error('Error in form submit:', err);
+    }
+  };
+
+  const handleImageChange = (url: string) => {
+    setForm(f => ({ ...f, image: url }));
+  };
+
+  const handleImageRemove = () => {
+    setForm(f => ({ ...f, image: '' }));
   };
 
   const isValid = form.name && form.price && form.categoryId;
 
-  // Aguarda inicialização para evitar flash de formulário vazio
-  if (!isInitialized) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  // Garantir que categories é um array válido
+  const safeCategories = Array.isArray(categories) ? categories : [];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -95,11 +114,11 @@ export function ProductForm({
         <label className="text-sm text-muted-foreground mb-2 block">Foto do Produto</label>
         <ImageUpload 
           value={isRealImage(form.image) ? form.image : undefined}
-          onChange={(url) => setForm(f => ({ ...f, image: url }))}
-          onRemove={() => setForm(f => ({ ...f, image: '' }))}
+          onChange={handleImageChange}
+          onRemove={handleImageRemove}
           aspectRatio="square"
           bucket="products"
-          path={`product-${product?.id || 'new'}`}
+          path={`product-${product?.id || 'new'}-${Date.now()}`}
           placeholder="Adicione uma foto do produto"
         />
         {!isRealImage(form.image) && form.image && (
@@ -155,7 +174,7 @@ export function ProductForm({
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
-              {categories.map(c => (
+              {safeCategories.map(c => (
                 <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
               ))}
             </SelectContent>
@@ -165,10 +184,10 @@ export function ProductForm({
       
       <div>
         <label className="text-sm text-muted-foreground mb-1 block">Tag (opcional)</label>
-        <Select value={form.tag} onValueChange={v => setForm(f => ({ ...f, tag: v }))}>
+        <Select value={form.tag || ""} onValueChange={v => setForm(f => ({ ...f, tag: v }))}>
           <SelectTrigger><SelectValue placeholder="Selecione uma tag" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Sem tag</SelectItem>
+            <SelectItem value="none">Sem tag</SelectItem>
             <SelectItem value="NOVO">NOVO</SelectItem>
             <SelectItem value="POPULAR">POPULAR</SelectItem>
             <SelectItem value="PROMOÇÃO">PROMOÇÃO</SelectItem>
@@ -213,3 +232,5 @@ export function ProductForm({
     </form>
   );
 }
+
+export const ProductForm = memo(ProductFormComponent);
