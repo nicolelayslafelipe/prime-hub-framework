@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
@@ -38,8 +37,11 @@ import {
   Building2, 
   Briefcase,
   Star,
-  Loader2
+  Loader2,
+  Search,
+  CheckCircle2
 } from 'lucide-react';
+import { fetchAddressByCep, formatCepForDisplay, isValidCep, formatCep } from '@/lib/cep';
 
 const addressSchema = z.object({
   label: z.string().min(1, 'Informe um nome para o endereço'),
@@ -80,6 +82,8 @@ export default function ClientAddresses() {
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSearchingCep, setIsSearchingCep] = useState(false);
+  const [cepFound, setCepFound] = useState(false);
 
   const form = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
@@ -96,6 +100,56 @@ export default function ClientAddresses() {
       is_default: false,
     },
   });
+
+  const watchedCep = form.watch('zip_code');
+
+  // Auto-search CEP when valid
+  const handleCepSearch = useCallback(async (cep: string) => {
+    if (!isValidCep(cep)) {
+      setCepFound(false);
+      return;
+    }
+
+    setIsSearchingCep(true);
+    setCepFound(false);
+
+    try {
+      const addressData = await fetchAddressByCep(cep);
+      
+      if (addressData) {
+        form.setValue('street', addressData.street, { shouldValidate: true });
+        form.setValue('neighborhood', addressData.neighborhood, { shouldValidate: true });
+        form.setValue('city', addressData.city, { shouldValidate: true });
+        form.setValue('state', addressData.state, { shouldValidate: true });
+        setCepFound(true);
+        toast.success('Endereço encontrado!');
+        
+        // Focus on number field after auto-fill
+        setTimeout(() => {
+          document.getElementById('number')?.focus();
+        }, 100);
+      } else {
+        toast.error('CEP não encontrado');
+      }
+    } catch {
+      toast.error('Erro ao buscar CEP');
+    } finally {
+      setIsSearchingCep(false);
+    }
+  }, [form]);
+
+  // Debounced CEP search
+  useEffect(() => {
+    const cleanCep = formatCep(watchedCep || '');
+    if (cleanCep.length === 8) {
+      const timer = setTimeout(() => {
+        handleCepSearch(cleanCep);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setCepFound(false);
+    }
+  }, [watchedCep, handleCepSearch]);
 
   useEffect(() => {
     if (user) {
@@ -123,6 +177,7 @@ export default function ClientAddresses() {
   };
 
   const handleOpenDialog = (address?: Address) => {
+    setCepFound(false);
     if (address) {
       setEditingAddress(address);
       form.reset({
@@ -158,7 +213,14 @@ export default function ClientAddresses() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingAddress(null);
+    setCepFound(false);
     form.reset();
+  };
+
+  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formatted = formatCepForDisplay(value);
+    form.setValue('zip_code', formatted);
   };
 
   const onSubmit = async (data: AddressFormData) => {
@@ -416,6 +478,35 @@ export default function ClientAddresses() {
               )}
             </div>
 
+            {/* CEP field with auto-search */}
+            <div className="space-y-2">
+              <Label htmlFor="zip_code">CEP</Label>
+              <div className="relative">
+                <Input
+                  id="zip_code"
+                  placeholder="00000-000"
+                  value={form.watch('zip_code')}
+                  onChange={handleCepChange}
+                  className="pr-10"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {isSearchingCep ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : cepFound ? (
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                  ) : (
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Digite o CEP para preencher automaticamente
+              </p>
+              {form.formState.errors.zip_code && (
+                <p className="text-sm text-destructive">{form.formState.errors.zip_code.message}</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2 space-y-2">
                 <Label htmlFor="street">Rua</Label>
@@ -450,29 +541,16 @@ export default function ClientAddresses() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="neighborhood">Bairro</Label>
-                <Input
-                  id="neighborhood"
-                  placeholder="Bairro"
-                  {...form.register('neighborhood')}
-                />
-                {form.formState.errors.neighborhood && (
-                  <p className="text-sm text-destructive">{form.formState.errors.neighborhood.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="zip_code">CEP</Label>
-                <Input
-                  id="zip_code"
-                  placeholder="00000-000"
-                  {...form.register('zip_code')}
-                />
-                {form.formState.errors.zip_code && (
-                  <p className="text-sm text-destructive">{form.formState.errors.zip_code.message}</p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="neighborhood">Bairro</Label>
+              <Input
+                id="neighborhood"
+                placeholder="Bairro"
+                {...form.register('neighborhood')}
+              />
+              {form.formState.errors.neighborhood && (
+                <p className="text-sm text-destructive">{form.formState.errors.neighborhood.message}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -503,18 +581,20 @@ export default function ClientAddresses() {
 
             <div className="space-y-2">
               <Label htmlFor="reference">Ponto de referência (opcional)</Label>
-              <Textarea
+              <Input
                 id="reference"
-                placeholder="Ex: Próximo ao mercado"
-                rows={2}
+                placeholder="Próximo ao mercado, etc."
                 {...form.register('reference')}
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <Label htmlFor="is_default" className="cursor-pointer">
-                Definir como endereço padrão
-              </Label>
+            <div className="flex items-center justify-between py-2 px-3 bg-secondary/50 rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="is_default" className="cursor-pointer">Endereço padrão</Label>
+                <p className="text-xs text-muted-foreground">
+                  Usar este endereço como padrão para entregas
+                </p>
+              </div>
               <Switch
                 id="is_default"
                 checked={form.watch('is_default')}
@@ -552,7 +632,7 @@ export default function ClientAddresses() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir endereço?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O endereço será removido permanentemente.
+              Esta ação não pode ser desfeita. O endereço será permanentemente removido.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
