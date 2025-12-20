@@ -8,10 +8,15 @@ import { OrderProvider } from "./contexts/OrderContext";
 import { CartProvider } from "./contexts/CartContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProductProvider } from "./contexts/ProductContext";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Pages
-import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import AuthPage from "./pages/auth/AuthPage";
+
+// Client Pages
+import ClientPanel from "./pages/client/ClientPanel";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -41,68 +46,73 @@ import AdminApiConfig from "./pages/admin/ApiConfig";
 // Panel Pages
 import KitchenPanel from "./pages/kitchen/KitchenPanel";
 import MotoboyPanel from "./pages/motoboy/MotoboyPanel";
-import ClientPanel from "./pages/client/ClientPanel";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <ConfigProvider>
-        <ProductProvider>
-          <OrderProvider>
-            <CartProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    {/* Landing */}
-                    <Route path="/" element={<Index />} />
+      <AuthProvider>
+        <ConfigProvider>
+          <ProductProvider>
+            <OrderProvider>
+              <CartProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <Routes>
+                      {/* Public Routes */}
+                      <Route path="/" element={<ClientPanel />} />
+                      <Route path="/auth" element={<AuthPage />} />
 
-                    {/* Admin Panel */}
-                    <Route path="/admin" element={<AdminDashboard />} />
-                    <Route path="/admin/kanban" element={<AdminKanban />} />
-                    <Route path="/admin/orders" element={<AdminOrders />} />
-                    <Route path="/admin/clients" element={<AdminClients />} />
-                    <Route path="/admin/categories" element={<AdminCategories />} />
-                    <Route path="/admin/products" element={<AdminProducts />} />
-                    <Route path="/admin/pickup" element={<AdminPickup />} />
-                    <Route path="/admin/online-payment" element={<AdminOnlinePayment />} />
-                    <Route path="/admin/mercadopago" element={<AdminMercadoPago />} />
-                    <Route path="/admin/payment-methods" element={<AdminPaymentMethods />} />
-                    <Route path="/admin/pix-messages" element={<AdminPixMessages />} />
-                    <Route path="/admin/marketing" element={<AdminMarketing />} />
-                    <Route path="/admin/loyalty" element={<AdminLoyalty />} />
-                    <Route path="/admin/reviews" element={<AdminReviews />} />
-                    <Route path="/admin/system" element={<AdminSystem />} />
-                    <Route path="/admin/hours" element={<AdminBusinessHours />} />
-                    <Route path="/admin/delivery-config" element={<AdminDeliveryConfig />} />
-                    <Route path="/admin/messages" element={<AdminEditableMessages />} />
-                    <Route path="/admin/verification" element={<AdminFirstOrderVerification />} />
-                    <Route path="/admin/recaptcha" element={<AdminRecaptcha />} />
-                    <Route path="/admin/api-config" element={<AdminApiConfig />} />
-                    <Route path="/admin/users" element={<AdminUsers />} />
-                    <Route path="/admin/settings" element={<AdminSettings />} />
+                      {/* Protected Admin Routes */}
+                      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                        <Route path="/admin" element={<AdminDashboard />} />
+                        <Route path="/admin/kanban" element={<AdminKanban />} />
+                        <Route path="/admin/orders" element={<AdminOrders />} />
+                        <Route path="/admin/clients" element={<AdminClients />} />
+                        <Route path="/admin/categories" element={<AdminCategories />} />
+                        <Route path="/admin/products" element={<AdminProducts />} />
+                        <Route path="/admin/pickup" element={<AdminPickup />} />
+                        <Route path="/admin/online-payment" element={<AdminOnlinePayment />} />
+                        <Route path="/admin/mercadopago" element={<AdminMercadoPago />} />
+                        <Route path="/admin/payment-methods" element={<AdminPaymentMethods />} />
+                        <Route path="/admin/pix-messages" element={<AdminPixMessages />} />
+                        <Route path="/admin/marketing" element={<AdminMarketing />} />
+                        <Route path="/admin/loyalty" element={<AdminLoyalty />} />
+                        <Route path="/admin/reviews" element={<AdminReviews />} />
+                        <Route path="/admin/system" element={<AdminSystem />} />
+                        <Route path="/admin/hours" element={<AdminBusinessHours />} />
+                        <Route path="/admin/delivery-config" element={<AdminDeliveryConfig />} />
+                        <Route path="/admin/messages" element={<AdminEditableMessages />} />
+                        <Route path="/admin/verification" element={<AdminFirstOrderVerification />} />
+                        <Route path="/admin/recaptcha" element={<AdminRecaptcha />} />
+                        <Route path="/admin/api-config" element={<AdminApiConfig />} />
+                        <Route path="/admin/users" element={<AdminUsers />} />
+                        <Route path="/admin/settings" element={<AdminSettings />} />
+                      </Route>
 
-                    {/* Kitchen Panel */}
-                    <Route path="/kitchen" element={<KitchenPanel />} />
+                      {/* Protected Kitchen Route */}
+                      <Route element={<ProtectedRoute allowedRoles={['kitchen', 'admin']} />}>
+                        <Route path="/kitchen" element={<KitchenPanel />} />
+                      </Route>
 
-                    {/* Motoboy Panel */}
-                    <Route path="/motoboy" element={<MotoboyPanel />} />
+                      {/* Protected Motoboy Route */}
+                      <Route element={<ProtectedRoute allowedRoles={['motoboy', 'admin']} />}>
+                        <Route path="/motoboy" element={<MotoboyPanel />} />
+                      </Route>
 
-                    {/* Client Panel */}
-                    <Route path="/client" element={<ClientPanel />} />
-
-                    {/* 404 */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
-              </TooltipProvider>
-            </CartProvider>
-          </OrderProvider>
-        </ProductProvider>
-      </ConfigProvider>
+                      {/* 404 */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </BrowserRouter>
+                </TooltipProvider>
+              </CartProvider>
+            </OrderProvider>
+          </ProductProvider>
+        </ConfigProvider>
+      </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
