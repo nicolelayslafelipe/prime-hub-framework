@@ -12,6 +12,7 @@ import { CategoryNav } from '@/components/client/CategoryNav';
 import { Cart } from '@/components/client/Cart';
 import { Checkout } from '@/components/client/Checkout';
 import { OrderTracking } from '@/components/client/OrderTracking';
+import { HeroBanner } from '@/components/client/HeroBanner';
 import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher';
 import { mockCategories, mockProducts } from '@/data/mockProducts';
 import { Order } from '@/types';
@@ -211,9 +212,13 @@ export default function ClientPanel() {
           </div>
         </header>
 
-        {/* Hero */}
+        {/* Hero Section */}
         <section className="py-8 px-4 md:px-6 border-b border-border">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Banner */}
+            <HeroBanner />
+            
+            {/* Store Info */}
             <div className="flex flex-col md:flex-row md:items-center gap-6">
               <div className="h-20 w-20 rounded-xl bg-primary flex items-center justify-center shadow-glow-gold">
                 <Store className="h-10 w-10 text-primary-foreground" />

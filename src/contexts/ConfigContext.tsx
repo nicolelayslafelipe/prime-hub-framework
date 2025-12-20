@@ -21,6 +21,9 @@ const defaultEstablishment: EstablishmentSettings = {
   address: 'Rua Exemplo, 123 - Centro',
   phone: '(11) 99999-9999',
   whatsapp: '5511999999999',
+  banner: undefined,
+  bannerText: undefined,
+  showBanner: false,
 };
 
 const defaultTheme: ThemeSettings = {
