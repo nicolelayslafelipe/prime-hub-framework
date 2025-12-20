@@ -1,13 +1,15 @@
 import { useOrders } from '@/contexts/OrderContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Logo } from '@/components/shared/Logo';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, Bike, MapPin, Phone, CheckCircle2, Navigation, Coins } from 'lucide-react';
+import { Clock, Bike, MapPin, Phone, CheckCircle2, Navigation, Coins, LogOut, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 function OrderCardSkeleton() {
   return (
@@ -31,6 +33,8 @@ function OrderCardSkeleton() {
 
 export default function MotoboyPanel() {
   const { orders, updateOrderStatus, isLoading, connectionStatus } = useOrders();
+  const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const availableOrders = orders.filter((o) => o.status === 'ready');
   const myDeliveries = orders.filter((o) => o.status === 'out_for_delivery');
@@ -41,6 +45,11 @@ export default function MotoboyPanel() {
 
   const handleCompleteDelivery = async (orderId: string) => {
     await updateOrderStatus(orderId, 'delivered');
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
   };
 
   return (
@@ -58,6 +67,15 @@ export default function MotoboyPanel() {
           </div>
           <div className="flex items-center gap-4">
             <ConnectionStatus status={connectionStatus} />
+            <div className="h-6 w-px bg-border" />
+            <div className="flex items-center gap-2 text-sm">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{profile?.name || 'Motoboy'}</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
           </div>
         </div>
       </header>

@@ -313,6 +313,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           id: string
+          is_active: boolean
           name: string
           phone: string | null
           updated_at: string | null
@@ -322,6 +323,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           id: string
+          is_active?: boolean
           name?: string
           phone?: string | null
           updated_at?: string | null
@@ -331,6 +333,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           id?: string
+          is_active?: boolean
           name?: string
           phone?: string | null
           updated_at?: string | null
