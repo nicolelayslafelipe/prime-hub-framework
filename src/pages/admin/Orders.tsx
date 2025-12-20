@@ -1,7 +1,9 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useOrders } from '@/contexts/OrderContext';
+import { useSound } from '@/contexts/SoundContext';
 import { OrderCard } from '@/components/admin/OrderCard';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
+import { SoundIndicator } from '@/components/shared/SoundIndicator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderStatus } from '@/types';
 import { Package } from 'lucide-react';
@@ -47,6 +49,7 @@ function ColumnSkeleton() {
 
 export default function AdminOrders() {
   const { orders, updateOrderStatus, getOrdersByStatus, isLoading, connectionStatus } = useOrders();
+  const { adminSettings, isPlayingAdmin } = useSound();
 
   const handleUpdateStatus = async (orderId: string) => {
     const order = orders.find((o) => o.id === orderId);
@@ -59,7 +62,16 @@ export default function AdminOrders() {
     <AdminLayout 
       title="Pedidos" 
       subtitle="Gestão de pedidos em tempo real"
-      headerRight={<ConnectionStatus status={connectionStatus} />}
+      headerRight={
+        <div className="flex items-center gap-3">
+          <SoundIndicator 
+            isPlaying={isPlayingAdmin} 
+            isEnabled={adminSettings?.enabled ?? true}
+            size="md"
+          />
+          <ConnectionStatus status={connectionStatus} />
+        </div>
+      }
     >
       <div className="grid gap-6 lg:grid-cols-4">
         {isLoading ? (

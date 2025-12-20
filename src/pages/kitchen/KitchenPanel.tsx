@@ -1,12 +1,14 @@
 import { useOrders } from '@/contexts/OrderContext';
+import { useSound } from '@/contexts/SoundContext';
 import { Logo } from '@/components/shared/Logo';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
+import { SoundIndicator } from '@/components/shared/SoundIndicator';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderStatus } from '@/types';
-import { Clock, ChefHat, CheckCircle2, Coins } from 'lucide-react';
+import { Clock, ChefHat, CheckCircle2, Coins, VolumeX } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -53,14 +55,26 @@ function OrderCardSkeleton() {
 
 export default function KitchenPanel() {
   const { orders, updateOrderStatus, isLoading, connectionStatus } = useOrders();
+  const { 
+    kitchenSettings, 
+    isPlayingKitchen, 
+    isKitchenRepeating, 
+    stopKitchenRepeat,
+    markOrderAsAlerted 
+  } = useSound();
 
   const kitchenOrders = orders.filter((order) =>
     kitchenStatuses.includes(order.status)
   );
 
+  const pendingCount = orders.filter((o) => o.status === 'pending').length;
+
   const handleUpdateStatus = async (orderId: string, currentStatus: OrderStatus) => {
     const nextStatus = statusFlow[currentStatus];
     if (nextStatus) {
+      // Stop repeat and mark as handled when interacting with order
+      stopKitchenRepeat();
+      markOrderAsAlerted(orderId);
       await updateOrderStatus(orderId, nextStatus);
     }
   };
@@ -79,6 +93,23 @@ export default function KitchenPanel() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {isKitchenRepeating && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={stopKitchenRepeat}
+                className="text-destructive border-destructive/30 hover:bg-destructive/10"
+              >
+                <VolumeX className="h-4 w-4 mr-2" />
+                Parar Alerta
+              </Button>
+            )}
+            <SoundIndicator 
+              isPlaying={isPlayingKitchen} 
+              isEnabled={kitchenSettings?.enabled ?? true}
+              isRepeating={isKitchenRepeating}
+              size="md"
+            />
             <div className="text-sm text-muted-foreground">
               {kitchenOrders.length} pedidos em andamento
             </div>
@@ -93,10 +124,10 @@ export default function KitchenPanel() {
           {/* Pending */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <span className="h-3 w-3 rounded-full bg-status-pending" />
+              <span className={`h-3 w-3 rounded-full bg-status-pending ${pendingCount > 0 && isKitchenRepeating ? 'animate-pulse' : ''}`} />
               <h2 className="text-lg font-semibold">Novos Pedidos</h2>
-              <span className="text-sm text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                {orders.filter((o) => o.status === 'pending').length}
+              <span className={`text-sm bg-secondary px-2 py-0.5 rounded-full ${pendingCount > 0 ? 'text-status-pending font-bold' : 'text-muted-foreground'}`}>
+                {pendingCount}
               </span>
             </div>
             <div className="space-y-4">
@@ -128,19 +159,19 @@ export default function KitchenPanel() {
                           </div>
                         ))}
                       </div>
-                                      {order.notes && (
-                                        <div className="bg-warning/10 rounded-lg px-3 py-2 mb-4">
-                                          <p className="text-sm text-warning font-medium">Obs: {order.notes}</p>
-                                        </div>
-                                      )}
-                                      {order.needsChange && order.changeFor && order.changeAmount !== undefined && (
-                                        <div className="bg-accent/10 rounded-lg px-3 py-2 mb-4 flex items-center gap-2">
-                                          <Coins className="h-4 w-4 text-accent" />
-                                          <span className="text-sm font-medium text-accent">
-                                            Troco: R$ {order.changeAmount.toFixed(2)} (paga R$ {order.changeFor.toFixed(2)})
-                                          </span>
-                                        </div>
-                                      )}
+                      {order.notes && (
+                        <div className="bg-warning/10 rounded-lg px-3 py-2 mb-4">
+                          <p className="text-sm text-warning font-medium">Obs: {order.notes}</p>
+                        </div>
+                      )}
+                      {order.needsChange && order.changeFor && order.changeAmount !== undefined && (
+                        <div className="bg-accent/10 rounded-lg px-3 py-2 mb-4 flex items-center gap-2">
+                          <Coins className="h-4 w-4 text-accent" />
+                          <span className="text-sm font-medium text-accent">
+                            Troco: R$ {order.changeAmount.toFixed(2)} (paga R$ {order.changeFor.toFixed(2)})
+                          </span>
+                        </div>
+                      )}
                       <Button
                         className="w-full"
                         onClick={() => handleUpdateStatus(order.id, order.status)}
