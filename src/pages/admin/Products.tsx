@@ -9,9 +9,10 @@ import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Copy } from 'lucide-react';
 import { Product } from '@/data/mockProducts';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 // Check if image is a real URL or just an emoji
 const isRealImage = (image: string): boolean => {
@@ -65,7 +66,8 @@ export default function AdminProducts() {
         preparationTime: 15 
       };
       
-      if (editingProduct) {
+      // Se editingProduct tem ID, é edição. Senão, é novo produto (ou duplicação)
+      if (editingProduct?.id) {
         await updateProduct(editingProduct.id, data);
       } else {
         await addProduct(data);
@@ -82,6 +84,20 @@ export default function AdminProducts() {
     setModalKey(prev => prev + 1);
     setEditingProduct(product);
     setIsModalOpen(true);
+  }, []);
+
+  const handleDuplicate = useCallback((product: Product) => {
+    // Cria uma cópia do produto sem o ID (será um novo produto)
+    const duplicatedProduct = {
+      ...product,
+      id: '', // ID vazio para indicar novo produto
+      name: `${product.name} (Cópia)`,
+    } as Product;
+    
+    setModalKey(prev => prev + 1);
+    setEditingProduct(duplicatedProduct);
+    setIsModalOpen(true);
+    toast.info('Editando cópia do produto');
   }, []);
 
   const handleOpenNewProduct = useCallback(() => {
@@ -194,12 +210,15 @@ export default function AdminProducts() {
                 <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{product.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-bold text-accent">R$ {product.price.toFixed(2)}</span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <Switch checked={product.isAvailable} onCheckedChange={() => toggleProduct(product.id)} />
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(product)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleDuplicate(product)} title="Duplicar produto">
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(product)} title="Editar produto">
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteId(product.id)}>
+                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteId(product.id)} title="Excluir produto">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -214,9 +233,15 @@ export default function AdminProducts() {
       <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
         <DialogContent className="bg-card border-border max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingProduct ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
+            <DialogTitle>
+              {editingProduct?.id ? 'Editar Produto' : editingProduct ? 'Duplicar Produto' : 'Novo Produto'}
+            </DialogTitle>
             <DialogDescription>
-              {editingProduct ? 'Atualize as informações do produto' : 'Adicione um novo produto ao cardápio'}
+              {editingProduct?.id 
+                ? 'Atualize as informações do produto' 
+                : editingProduct 
+                  ? 'Ajuste os dados e salve como novo produto'
+                  : 'Adicione um novo produto ao cardápio'}
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
