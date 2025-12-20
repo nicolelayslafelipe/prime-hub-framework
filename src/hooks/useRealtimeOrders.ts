@@ -63,7 +63,13 @@ const mapDbItemToOrderItem = (dbItem: DbOrderItem): OrderItem => ({
   additions: dbItem.additions || undefined,
 });
 
-export function useRealtimeOrders() {
+interface UseRealtimeOrdersOptions {
+  onNewOrder?: (order: Order) => void;
+  onOrderUpdate?: (order: Order) => void;
+}
+
+export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
+  const { onNewOrder, onOrderUpdate } = options;
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -125,22 +131,29 @@ export function useRealtimeOrders() {
         const mappedOrder = mapDbOrderToOrder(newOrder, items);
 
         setOrders((prev) => [mappedOrder, ...prev]);
+        
+        // Call onNewOrder callback
+        onNewOrder?.(mappedOrder);
       } else if (payload.eventType === 'UPDATE') {
         const updatedOrder = payload.new as DbOrder;
 
         setOrders((prev) =>
-          prev.map((order) =>
-            order.id === updatedOrder.id
-              ? { ...order, ...mapDbOrderToOrder(updatedOrder, order.items) }
-              : order
-          )
+          prev.map((order) => {
+            if (order.id === updatedOrder.id) {
+              const updated = { ...order, ...mapDbOrderToOrder(updatedOrder, order.items) };
+              // Call onOrderUpdate callback
+              onOrderUpdate?.(updated);
+              return updated;
+            }
+            return order;
+          })
         );
       } else if (payload.eventType === 'DELETE') {
         const deletedOrder = payload.old as DbOrder;
         setOrders((prev) => prev.filter((order) => order.id !== deletedOrder.id));
       }
     },
-    []
+    [onNewOrder, onOrderUpdate]
   );
 
   // Setup realtime subscription
