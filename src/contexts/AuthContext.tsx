@@ -10,6 +10,7 @@ interface Profile {
   phone: string | null;
   address: string | null;
   avatar_url: string | null;
+  is_active?: boolean;
 }
 
 interface ProfileUpdate {
@@ -105,11 +106,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    return { error: error ? new Error(error.message) : null };
+    
+    if (error) {
+      return { error: new Error(error.message) };
+    }
+
+    // Check if user is active
+    if (data.user) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('is_active')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (profileData && profileData.is_active === false) {
+        // Sign out the inactive user
+        await supabase.auth.signOut();
+        return { error: new Error('Sua conta está desativada. Entre em contato com o administrador.') };
+      }
+    }
+
+    return { error: null };
   };
 
   const signUp = async (email: string, password: string, name: string, phone?: string) => {

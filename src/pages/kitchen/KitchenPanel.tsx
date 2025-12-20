@@ -1,5 +1,6 @@
 import { useOrders } from '@/contexts/OrderContext';
 import { useSound } from '@/contexts/SoundContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Logo } from '@/components/shared/Logo';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
@@ -8,9 +9,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderStatus } from '@/types';
-import { Clock, ChefHat, CheckCircle2, Coins, VolumeX } from 'lucide-react';
+import { Clock, ChefHat, CheckCircle2, Coins, VolumeX, LogOut, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 const kitchenStatuses: OrderStatus[] = ['pending', 'preparing', 'ready'];
 
@@ -62,12 +64,20 @@ export default function KitchenPanel() {
     stopKitchenRepeat,
     markOrderAsAlerted 
   } = useSound();
+  const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const kitchenOrders = orders.filter((order) =>
     kitchenStatuses.includes(order.status)
   );
 
   const pendingCount = orders.filter((o) => o.status === 'pending').length;
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
 
   const handleUpdateStatus = async (orderId: string, currentStatus: OrderStatus) => {
     const nextStatus = statusFlow[currentStatus];
@@ -114,6 +124,15 @@ export default function KitchenPanel() {
               {kitchenOrders.length} pedidos em andamento
             </div>
             <ConnectionStatus status={connectionStatus} />
+            <div className="h-6 w-px bg-border" />
+            <div className="flex items-center gap-2 text-sm">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{profile?.name || 'Cozinha'}</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
           </div>
         </div>
       </header>
