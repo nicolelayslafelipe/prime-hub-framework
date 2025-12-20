@@ -31,15 +31,13 @@ export function OrderCard({
       className={cn(
         'group relative rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden transition-all duration-300',
         'hover:border-primary/30 hover:shadow-[0_0_40px_-15px_hsl(var(--primary)/0.3)]',
-        isUrgent && 'border-status-pending/30 animate-glow-pulse',
+        isUrgent && 'border-status-pending/30',
         variant === 'compact' ? 'p-4' : 'p-5'
       )}
     >
       {/* Urgent indicator */}
       {isUrgent && (
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-status-pending via-neon-orange to-status-pending animate-gradient" 
-          style={{ backgroundSize: '200% 100%' }}
-        />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-status-pending via-warning to-status-pending" />
       )}
 
       {/* Header */}
@@ -73,7 +71,7 @@ export function OrderCard({
             <User className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <p className="font-semibold">{order.customerName}</p>
+            <p className="font-semibold text-foreground">{order.customerName}</p>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Phone className="h-3 w-3" />
               {order.customerPhone}
@@ -102,7 +100,7 @@ export function OrderCard({
             >
               <span className="flex items-center gap-2">
                 <span className="font-mono font-bold text-primary">{item.quantity}x</span>
-                <span>{item.productName}</span>
+                <span className="text-foreground">{item.productName}</span>
               </span>
               <span className="font-medium text-muted-foreground">
                 R$ {(item.quantity * item.unitPrice).toFixed(2)}
@@ -131,7 +129,7 @@ export function OrderCard({
           </div>
           <div className="mt-2 flex justify-between text-sm">
             <span className="text-muted-foreground">Pagará com:</span>
-            <span className="font-bold">R$ {order.changeFor.toFixed(2)}</span>
+            <span className="font-bold text-foreground">R$ {order.changeFor.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Troco:</span>
@@ -144,7 +142,7 @@ export function OrderCard({
       {showActions && onUpdateStatus && (
         <Button
           onClick={() => onUpdateStatus(order.id)}
-          className="w-full group/btn gradient-primary text-primary-foreground font-semibold h-12 rounded-xl shadow-glow hover:shadow-glow-lg transition-all duration-300"
+          className="w-full group/btn bg-primary text-primary-foreground font-semibold h-12 rounded-xl hover:bg-primary/90 transition-all duration-300"
         >
           <span>Avançar Status</span>
           <ChevronRight className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />

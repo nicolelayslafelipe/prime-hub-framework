@@ -4,157 +4,337 @@
 @tailwind components;
 @tailwind utilities;
 
-/* DeliveryOS Design System - PREMIUM ENTERPRISE LUXURY */
+/* ═══════════════════════════════════════════════════════════════════════════
+   DeliveryOS Premium Design System - Professional Theme Architecture
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
-  :root {
-    /* Base - Deep blacks and graphite */
-    --background: 220 14% 4%;
-    --foreground: 0 0% 96%;
+  /* ─────────────────────────────────────────────────────────────────────────
+     PREMIUM DARK THEME (Default) - Luxurious dark with gold accent
+     ───────────────────────────────────────────────────────────────────────── */
+  :root,
+  .premium-dark {
+    /* Core Backgrounds */
+    --background: 220 16% 6%;
+    --foreground: 220 10% 96%;
 
-    --card: 220 14% 7%;
-    --card-foreground: 0 0% 96%;
+    /* Surface Colors */
+    --card: 220 14% 9%;
+    --card-foreground: 220 10% 96%;
+    --popover: 220 14% 9%;
+    --popover-foreground: 220 10% 96%;
 
-    --popover: 220 14% 7%;
-    --popover-foreground: 0 0% 96%;
+    /* Primary - Premium Gold */
+    --primary: 42 85% 55%;
+    --primary-foreground: 220 16% 6%;
 
-    /* Premium Gold Accent */
-    --primary: 45 80% 55%;
-    --primary-foreground: 220 14% 4%;
+    /* Secondary - Subtle surface */
+    --secondary: 220 12% 14%;
+    --secondary-foreground: 220 10% 85%;
 
-    --secondary: 220 10% 12%;
-    --secondary-foreground: 0 0% 90%;
+    /* Muted - Subdued elements */
+    --muted: 220 12% 18%;
+    --muted-foreground: 220 10% 55%;
 
-    --muted: 220 10% 16%;
-    --muted-foreground: 220 10% 50%;
+    /* Accent - Emerald highlight */
+    --accent: 158 70% 45%;
+    --accent-foreground: 220 16% 6%;
 
-    /* Emerald Secondary Accent */
-    --accent: 160 84% 39%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 62% 50%;
+    /* Semantic Colors */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
+    --success: 158 70% 45%;
+    --success-foreground: 220 16% 6%;
+    --warning: 42 85% 55%;
+    --warning-foreground: 220 16% 6%;
 
-    --success: 160 84% 39%;
-    --success-foreground: 0 0% 100%;
-
-    --warning: 45 80% 55%;
-    --warning-foreground: 220 14% 4%;
-
-    --border: 220 10% 14%;
-    --input: 220 10% 14%;
-    --ring: 45 80% 55%;
-
+    /* UI Elements */
+    --border: 220 12% 16%;
+    --input: 220 12% 14%;
+    --ring: 42 85% 55%;
     --radius: 0.75rem;
 
     /* Premium Accents */
-    --gold: 45 80% 55%;
-    --emerald: 160 84% 39%;
-    --sapphire: 220 80% 55%;
+    --gold: 42 85% 55%;
+    --emerald: 158 70% 45%;
+    --sapphire: 220 75% 55%;
 
-    /* Status colors - Elegant and desaturated */
-    --status-pending: 45 70% 50%;
-    --status-preparing: 220 60% 50%;
-    --status-ready: 160 60% 45%;
-    --status-delivering: 280 50% 55%;
-    --status-completed: 160 70% 40%;
-    --status-cancelled: 0 50% 45%;
+    /* Status Colors */
+    --status-pending: 42 75% 50%;
+    --status-preparing: 220 65% 55%;
+    --status-ready: 158 65% 45%;
+    --status-delivering: 280 55% 55%;
+    --status-completed: 158 70% 40%;
+    --status-cancelled: 0 55% 50%;
 
-    /* Sidebar - Premium dark */
-    --sidebar-background: 220 14% 5%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 45 80% 55%;
-    --sidebar-primary-foreground: 220 14% 4%;
-    --sidebar-accent: 220 10% 12%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 220 10% 12%;
-    --sidebar-ring: 45 80% 55%;
+    /* Sidebar */
+    --sidebar-background: 220 16% 5%;
+    --sidebar-foreground: 220 10% 85%;
+    --sidebar-primary: 42 85% 55%;
+    --sidebar-primary-foreground: 220 16% 6%;
+    --sidebar-accent: 220 12% 12%;
+    --sidebar-accent-foreground: 220 10% 90%;
+    --sidebar-border: 220 12% 12%;
+    --sidebar-ring: 42 85% 55%;
+
+    /* Gradient base colors (theme-aware) */
+    --gradient-from: 42 85% 55%;
+    --gradient-to: 42 90% 65%;
+    --gradient-bg-from: 220 16% 10%;
+    --gradient-bg-to: 220 16% 6%;
+
+    /* Chart colors */
+    --chart-1: 42 85% 55%;
+    --chart-2: 158 70% 45%;
+    --chart-3: 220 75% 55%;
+    --chart-4: 280 55% 55%;
+    --chart-5: 0 55% 50%;
   }
 
-  .dark, .premium-dark {
-    --background: 220 14% 4%;
-    --foreground: 0 0% 96%;
-    --card: 220 14% 7%;
-    --card-foreground: 0 0% 96%;
-    --popover: 220 14% 7%;
-    --popover-foreground: 0 0% 96%;
-    --primary: 45 80% 55%;
-    --primary-foreground: 220 14% 4%;
-    --secondary: 220 10% 12%;
-    --secondary-foreground: 0 0% 90%;
-    --muted: 220 10% 16%;
-    --muted-foreground: 220 10% 50%;
-    --accent: 160 84% 39%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 160 84% 39%;
-    --success-foreground: 0 0% 100%;
-    --warning: 45 80% 55%;
-    --warning-foreground: 220 14% 4%;
-    --border: 220 10% 14%;
-    --input: 220 10% 14%;
-    --ring: 45 80% 55%;
-  }
-
-  /* Premium Light Theme */
+  /* ─────────────────────────────────────────────────────────────────────────
+     PREMIUM LIGHT THEME - Elegant light with warm bronze accent
+     ───────────────────────────────────────────────────────────────────────── */
   .premium-light {
-    --background: 40 20% 98%;
-    --foreground: 220 14% 10%;
+    /* Core Backgrounds */
+    --background: 40 25% 97%;
+    --foreground: 220 25% 12%;
+
+    /* Surface Colors - Distinct from background */
     --card: 0 0% 100%;
-    --card-foreground: 220 14% 10%;
+    --card-foreground: 220 25% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 14% 10%;
-    --primary: 35 70% 45%;
+    --popover-foreground: 220 25% 12%;
+
+    /* Primary - Warm Bronze */
+    --primary: 30 65% 45%;
     --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Light gray surface */
     --secondary: 40 15% 92%;
-    --secondary-foreground: 220 14% 20%;
-    --muted: 40 10% 90%;
-    --muted-foreground: 220 10% 40%;
-    --accent: 160 70% 35%;
+    --secondary-foreground: 220 20% 25%;
+
+    /* Muted - Subdued elements */
+    --muted: 40 12% 88%;
+    --muted-foreground: 220 15% 40%;
+
+    /* Accent - Teal highlight */
+    --accent: 165 55% 38%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 50%;
+
+    /* Semantic Colors */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --success: 160 70% 35%;
+    --success: 165 55% 38%;
     --success-foreground: 0 0% 100%;
-    --warning: 35 70% 45%;
+    --warning: 30 65% 45%;
     --warning-foreground: 0 0% 100%;
-    --border: 40 15% 85%;
-    --input: 40 15% 85%;
-    --ring: 35 70% 45%;
-    --gold: 35 70% 45%;
-    --emerald: 160 70% 35%;
+
+    /* UI Elements */
+    --border: 40 15% 82%;
+    --input: 40 15% 88%;
+    --ring: 30 65% 45%;
+
+    /* Premium Accents */
+    --gold: 30 65% 45%;
+    --emerald: 165 55% 38%;
+    --sapphire: 220 60% 50%;
+
+    /* Status Colors - Adjusted for light background */
+    --status-pending: 35 70% 48%;
+    --status-preparing: 220 60% 50%;
+    --status-ready: 165 55% 38%;
+    --status-delivering: 280 50% 50%;
+    --status-completed: 165 60% 35%;
+    --status-cancelled: 0 60% 50%;
+
+    /* Sidebar - Light version */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 25%;
+    --sidebar-primary: 30 65% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 15% 94%;
+    --sidebar-accent-foreground: 220 20% 20%;
+    --sidebar-border: 40 15% 88%;
+    --sidebar-ring: 30 65% 45%;
+
+    /* Gradient base colors */
+    --gradient-from: 30 65% 45%;
+    --gradient-to: 30 70% 55%;
+    --gradient-bg-from: 40 20% 98%;
+    --gradient-bg-to: 40 25% 97%;
+
+    /* Chart colors - Adjusted for light */
+    --chart-1: 30 65% 45%;
+    --chart-2: 165 55% 38%;
+    --chart-3: 220 60% 50%;
+    --chart-4: 280 50% 50%;
+    --chart-5: 0 60% 50%;
   }
 
-  /* Dark Emerald Theme */
+  /* ─────────────────────────────────────────────────────────────────────────
+     DARK EMERALD THEME - Sophisticated dark with emerald accent
+     ───────────────────────────────────────────────────────────────────────── */
   .dark-emerald {
-    --background: 160 20% 4%;
-    --foreground: 0 0% 96%;
-    --card: 160 15% 7%;
-    --card-foreground: 0 0% 96%;
-    --popover: 160 15% 7%;
-    --popover-foreground: 0 0% 96%;
-    --primary: 160 84% 39%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 160 10% 12%;
-    --secondary-foreground: 0 0% 90%;
-    --muted: 160 10% 16%;
+    /* Core Backgrounds */
+    --background: 160 18% 5%;
+    --foreground: 160 10% 96%;
+
+    /* Surface Colors */
+    --card: 160 14% 8%;
+    --card-foreground: 160 10% 96%;
+    --popover: 160 14% 8%;
+    --popover-foreground: 160 10% 96%;
+
+    /* Primary - Vibrant Emerald */
+    --primary: 158 75% 42%;
+    --primary-foreground: 160 18% 5%;
+
+    /* Secondary - Subtle surface */
+    --secondary: 160 12% 13%;
+    --secondary-foreground: 160 10% 85%;
+
+    /* Muted - Subdued elements */
+    --muted: 160 12% 17%;
     --muted-foreground: 160 10% 50%;
-    --accent: 45 80% 55%;
-    --accent-foreground: 220 14% 4%;
-    --destructive: 0 62% 50%;
+
+    /* Accent - Gold highlight */
+    --accent: 42 85% 55%;
+    --accent-foreground: 160 18% 5%;
+
+    /* Semantic Colors */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --success: 160 84% 39%;
+    --success: 158 75% 42%;
+    --success-foreground: 160 18% 5%;
+    --warning: 42 85% 55%;
+    --warning-foreground: 160 18% 5%;
+
+    /* UI Elements */
+    --border: 160 12% 15%;
+    --input: 160 12% 13%;
+    --ring: 158 75% 42%;
+
+    /* Premium Accents */
+    --gold: 42 85% 55%;
+    --emerald: 158 75% 42%;
+    --sapphire: 200 70% 55%;
+
+    /* Status Colors */
+    --status-pending: 42 75% 50%;
+    --status-preparing: 200 65% 55%;
+    --status-ready: 158 70% 45%;
+    --status-delivering: 280 55% 55%;
+    --status-completed: 158 75% 40%;
+    --status-cancelled: 0 55% 50%;
+
+    /* Sidebar */
+    --sidebar-background: 160 18% 4%;
+    --sidebar-foreground: 160 10% 85%;
+    --sidebar-primary: 158 75% 42%;
+    --sidebar-primary-foreground: 160 18% 5%;
+    --sidebar-accent: 160 12% 11%;
+    --sidebar-accent-foreground: 160 10% 90%;
+    --sidebar-border: 160 12% 12%;
+    --sidebar-ring: 158 75% 42%;
+
+    /* Gradient base colors */
+    --gradient-from: 158 75% 42%;
+    --gradient-to: 158 80% 52%;
+    --gradient-bg-from: 160 16% 9%;
+    --gradient-bg-to: 160 18% 5%;
+
+    /* Chart colors */
+    --chart-1: 158 75% 42%;
+    --chart-2: 42 85% 55%;
+    --chart-3: 200 70% 55%;
+    --chart-4: 280 55% 55%;
+    --chart-5: 0 55% 50%;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     LIGHT SAPPHIRE THEME - Clean light with blue accent
+     ───────────────────────────────────────────────────────────────────────── */
+  .light-sapphire {
+    /* Core Backgrounds */
+    --background: 220 25% 97%;
+    --foreground: 220 30% 12%;
+
+    /* Surface Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 12%;
+
+    /* Primary - Royal Blue */
+    --primary: 220 72% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Cool gray surface */
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 25% 25%;
+
+    /* Muted - Subdued elements */
+    --muted: 220 12% 88%;
+    --muted-foreground: 220 15% 42%;
+
+    /* Accent - Cyan highlight */
+    --accent: 185 60% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Semantic Colors */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 158 60% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 45 80% 55%;
-    --warning-foreground: 220 14% 4%;
-    --border: 160 10% 14%;
-    --input: 160 10% 14%;
-    --ring: 160 84% 39%;
-    --gold: 45 80% 55%;
-    --emerald: 160 84% 39%;
+    --warning: 40 75% 50%;
+    --warning-foreground: 220 30% 12%;
+
+    /* UI Elements */
+    --border: 220 15% 82%;
+    --input: 220 15% 88%;
+    --ring: 220 72% 50%;
+
+    /* Premium Accents */
+    --gold: 40 75% 50%;
+    --emerald: 158 60% 40%;
+    --sapphire: 220 72% 50%;
+
+    /* Status Colors */
+    --status-pending: 40 70% 48%;
+    --status-preparing: 220 65% 55%;
+    --status-ready: 158 55% 40%;
+    --status-delivering: 280 50% 50%;
+    --status-completed: 158 60% 35%;
+    --status-cancelled: 0 60% 50%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 25% 25%;
+    --sidebar-primary: 220 72% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 15% 94%;
+    --sidebar-accent-foreground: 220 25% 20%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 220 72% 50%;
+
+    /* Gradient base colors */
+    --gradient-from: 220 72% 50%;
+    --gradient-to: 220 75% 60%;
+    --gradient-bg-from: 220 20% 98%;
+    --gradient-bg-to: 220 25% 97%;
+
+    /* Chart colors */
+    --chart-1: 220 72% 50%;
+    --chart-2: 185 60% 42%;
+    --chart-3: 158 60% 40%;
+    --chart-4: 280 50% 50%;
+    --chart-5: 0 60% 50%;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
   * {
@@ -162,7 +342,7 @@
   }
 
   html {
-    @apply dark;
+    @apply premium-dark;
   }
 
   body {
@@ -174,6 +354,7 @@
     @apply bg-primary/20 text-foreground;
   }
 
+  /* Scrollbar - Theme aware */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -192,13 +373,16 @@
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES - All theme-aware
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @layer utilities {
-  /* Premium Card Styles */
+  /* ─────────────────────────────────────────────────────────────────────────
+     Premium Card Styles
+     ───────────────────────────────────────────────────────────────────────── */
   .card-premium {
-    @apply bg-card border border-border/60 rounded-xl;
-    box-shadow: 
-      0 1px 2px 0 hsl(0 0% 0% / 0.1),
-      0 4px 12px -4px hsl(0 0% 0% / 0.2);
+    @apply bg-card border border-border/60 rounded-xl shadow-sm;
   }
 
   .card-premium-hover {
@@ -206,75 +390,100 @@
   }
 
   .card-premium-hover:hover {
-    @apply border-border;
+    @apply border-border shadow-md;
     box-shadow: 
-      0 1px 2px 0 hsl(0 0% 0% / 0.1),
-      0 8px 24px -8px hsl(0 0% 0% / 0.3),
+      0 4px 16px -4px hsl(var(--foreground) / 0.08),
       0 0 0 1px hsl(var(--primary) / 0.1);
   }
 
-  /* Subtle Glass Effect */
+  /* Glass Effect - Theme aware */
   .glass-subtle {
     @apply bg-card/80 backdrop-blur-md border border-border/50;
   }
 
-  /* Premium Gradients */
+  /* ─────────────────────────────────────────────────────────────────────────
+     Premium Gradients - Using CSS variables for theme awareness
+     ───────────────────────────────────────────────────────────────────────── */
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--gradient-from)) 0%, hsl(var(--gradient-to)) 100%);
+  }
+
   .gradient-gold {
-    background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(45 90% 65%) 100%);
+    background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold) / 0.8) 100%);
   }
 
   .gradient-emerald {
-    background: linear-gradient(135deg, hsl(var(--emerald)) 0%, hsl(160 70% 50%) 100%);
+    background: linear-gradient(135deg, hsl(var(--emerald)) 0%, hsl(var(--emerald) / 0.8) 100%);
   }
 
   .gradient-premium {
-    background: linear-gradient(135deg, hsl(var(--gold) / 0.9) 0%, hsl(var(--emerald) / 0.9) 100%);
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.9) 0%, hsl(var(--accent) / 0.9) 100%);
   }
 
   .gradient-dark {
-    background: linear-gradient(180deg, hsl(220 14% 8%) 0%, hsl(220 14% 4%) 100%);
+    background: linear-gradient(180deg, hsl(var(--gradient-bg-from)) 0%, hsl(var(--gradient-bg-to)) 100%);
   }
 
   .gradient-radial-subtle {
-    background: radial-gradient(ellipse at top, hsl(220 14% 10%) 0%, hsl(220 14% 4%) 70%);
+    background: radial-gradient(ellipse at top, hsl(var(--gradient-bg-from)) 0%, hsl(var(--gradient-bg-to)) 70%);
   }
 
-  /* Text Gradients */
+  /* ─────────────────────────────────────────────────────────────────────────
+     Text Gradients - Theme aware
+     ───────────────────────────────────────────────────────────────────────── */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--gradient-from)) 0%, hsl(var(--gradient-to)) 100%);
+  }
+
   .text-gradient-gold {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(45 90% 70%) 100%);
+    background-image: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold) / 0.8) 100%);
   }
 
   .text-gradient-premium {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(220 10% 70%) 100%);
+    background-image: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--muted-foreground)) 100%);
   }
 
-  /* Premium Shadows */
+  /* ─────────────────────────────────────────────────────────────────────────
+     Premium Shadows - Using foreground for theme awareness
+     ───────────────────────────────────────────────────────────────────────── */
   .shadow-premium {
     box-shadow: 
-      0 1px 3px 0 hsl(0 0% 0% / 0.15),
-      0 4px 12px -2px hsl(0 0% 0% / 0.25);
+      0 1px 3px 0 hsl(var(--foreground) / 0.08),
+      0 4px 12px -2px hsl(var(--foreground) / 0.12);
   }
 
   .shadow-premium-lg {
     box-shadow: 
-      0 2px 4px 0 hsl(0 0% 0% / 0.1),
-      0 8px 24px -4px hsl(0 0% 0% / 0.3);
+      0 2px 4px 0 hsl(var(--foreground) / 0.06),
+      0 8px 24px -4px hsl(var(--foreground) / 0.15);
   }
 
   .shadow-glow-gold {
-    box-shadow: 0 0 40px -10px hsl(var(--gold) / 0.3);
+    box-shadow: 0 0 40px -10px hsl(var(--gold) / 0.4);
   }
 
   .shadow-glow-emerald {
-    box-shadow: 0 0 40px -10px hsl(var(--emerald) / 0.3);
+    box-shadow: 0 0 40px -10px hsl(var(--emerald) / 0.4);
   }
 
-  /* Accent Lines */
+  .glow-primary {
+    box-shadow: 0 0 30px -8px hsl(var(--primary) / 0.5);
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Accent Lines - Theme aware
+     ───────────────────────────────────────────────────────────────────────── */
   .accent-line-gold {
     @apply h-full w-1 rounded-full;
     background: linear-gradient(180deg, hsl(var(--gold)) 0%, hsl(var(--gold) / 0.3) 100%);
+  }
+
+  .accent-line-primary {
+    @apply h-full w-1 rounded-full;
+    background: linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.3) 100%);
   }
 
   .accent-line-horizontal {
@@ -282,7 +491,9 @@
     background: linear-gradient(90deg, transparent 0%, hsl(var(--border)) 50%, transparent 100%);
   }
 
-  /* Premium Animations */
+  /* ─────────────────────────────────────────────────────────────────────────
+     Premium Animations
+     ───────────────────────────────────────────────────────────────────────── */
   .animate-fade-in {
     animation: fade-in 0.4s ease-out;
   }
@@ -313,7 +524,24 @@
     }
   }
 
-  /* Hover Effects */
+  .animate-slide-up {
+    animation: slide-up 0.5s ease-out;
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Hover Effects
+     ───────────────────────────────────────────────────────────────────────── */
   .hover-lift {
     @apply transition-all duration-300;
   }
@@ -330,7 +558,17 @@
     box-shadow: 0 0 30px -8px hsl(var(--gold) / 0.4);
   }
 
-  /* Status Indicators */
+  .hover-glow-primary {
+    @apply transition-all duration-300;
+  }
+
+  .hover-glow-primary:hover {
+    box-shadow: 0 0 30px -8px hsl(var(--primary) / 0.4);
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Status Indicators
+     ───────────────────────────────────────────────────────────────────────── */
   .status-indicator {
     @apply relative w-2 h-2 rounded-full;
   }
@@ -353,7 +591,9 @@
     }
   }
 
-  /* Premium Typography */
+  /* ─────────────────────────────────────────────────────────────────────────
+     Premium Typography
+     ───────────────────────────────────────────────────────────────────────── */
   .text-display {
     @apply font-bold tracking-tight;
     letter-spacing: -0.02em;
@@ -364,7 +604,9 @@
     letter-spacing: -0.01em;
   }
 
-  /* Dividers */
+  /* ─────────────────────────────────────────────────────────────────────────
+     Dividers
+     ───────────────────────────────────────────────────────────────────────── */
   .divider-subtle {
     @apply h-px w-full bg-border/50;
   }
