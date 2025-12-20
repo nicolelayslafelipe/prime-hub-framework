@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/shared/Logo';
 import { useConfig } from '@/contexts/ConfigContext';
+import { useProducts } from '@/contexts/ProductContext';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientOrders } from '@/hooks/useClientOrders';
@@ -14,7 +15,7 @@ import { Checkout } from '@/components/client/Checkout';
 import { OrderTracking } from '@/components/client/OrderTracking';
 import { HeroBanner } from '@/components/client/HeroBanner';
 import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher';
-import { mockCategories, mockProducts } from '@/data/mockProducts';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { Order } from '@/types';
 import {
   DropdownMenu,
@@ -41,7 +42,8 @@ import {
 
 export default function ClientPanel() {
   const navigate = useNavigate();
-  const { config } = useConfig();
+  const { config, isLoading: configLoading } = useConfig();
+  const { products, categories, isLoading: productsLoading } = useProducts();
   const { getItemCount, getSubtotal, setIsCartOpen } = useCart();
   const { user, profile, signOut } = useAuth();
   const { orders: clientOrders } = useClientOrders(user?.id);
@@ -60,24 +62,28 @@ export default function ClientPanel() {
   const itemCount = getItemCount();
   const subtotal = getSubtotal();
 
-  const filteredProducts = activeCategory === 'all' 
-    ? mockProducts.filter(p => p.isAvailable)
-    : mockProducts.filter(p => p.categoryId === activeCategory && p.isAvailable);
+  // Use real products from context
+  const availableProducts = products.filter(p => p.isAvailable);
+  const activeCategories = categories.filter(c => c.isActive);
 
-  const productCounts = mockCategories.reduce((acc, cat) => {
-    acc[cat.id] = mockProducts.filter(p => p.categoryId === cat.id && p.isAvailable).length;
+  const filteredProducts = activeCategory === 'all' 
+    ? availableProducts
+    : availableProducts.filter(p => p.categoryId === activeCategory);
+
+  const productCounts = categories.reduce((acc, cat) => {
+    acc[cat.id] = availableProducts.filter(p => p.categoryId === cat.id).length;
     return acc;
   }, {} as Record<string, number>);
 
   const groupedProducts = activeCategory === 'all'
-    ? mockCategories.filter(c => c.isActive).map(cat => ({
+    ? activeCategories.map(cat => ({
         category: cat,
-        products: mockProducts.filter(p => p.categoryId === cat.id && p.isAvailable)
+        products: availableProducts.filter(p => p.categoryId === cat.id)
       })).filter(g => g.products.length > 0)
     : [{ 
-        category: mockCategories.find(c => c.id === activeCategory)!, 
+        category: categories.find(c => c.id === activeCategory)!, 
         products: filteredProducts 
-      }];
+      }].filter(g => g.category);
 
   const handleCheckout = () => {
     if (!user) {
@@ -104,15 +110,12 @@ export default function ClientPanel() {
         }
         break;
       case 'orders':
-        // TODO: Implement orders history page
         navigate('/orders');
         break;
       case 'addresses':
-        // TODO: Implement addresses management page
         navigate('/addresses');
         break;
       case 'settings':
-        // TODO: Implement settings page
         navigate('/settings');
         break;
     }
@@ -121,6 +124,16 @@ export default function ClientPanel() {
   const handleSignOut = async () => {
     await signOut();
   };
+
+  const isLoading = configLoading || productsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingState message="Carregando cardápio..." size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -258,7 +271,7 @@ export default function ClientPanel() {
 
         {/* Categories */}
         <CategoryNav 
-          categories={mockCategories}
+          categories={activeCategories}
           activeCategory={activeCategory}
           onCategoryChange={setActiveCategory}
           productCounts={productCounts}
@@ -267,20 +280,26 @@ export default function ClientPanel() {
         {/* Products */}
         <section className="px-4 md:px-6 py-8 pb-32">
           <div className="max-w-4xl mx-auto space-y-8">
-            {groupedProducts.map(({ category, products }) => (
-              <div key={category.id} id={`category-${category.id}`}>
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-2xl">{category.icon}</span>
-                  <h2 className="text-xl font-bold">{category.name}</h2>
-                  <span className="text-sm text-muted-foreground">({products.length})</span>
-                </div>
-                <div className="space-y-3">
-                  {products.map(product => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
+            {groupedProducts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Nenhum produto disponível no momento.</p>
               </div>
-            ))}
+            ) : (
+              groupedProducts.map(({ category, products: prods }) => (
+                <div key={category.id} id={`category-${category.id}`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl">{category.icon}</span>
+                    <h2 className="text-xl font-bold">{category.name}</h2>
+                    <span className="text-sm text-muted-foreground">({prods.length})</span>
+                  </div>
+                  <div className="space-y-3">
+                    {prods.map(product => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
 

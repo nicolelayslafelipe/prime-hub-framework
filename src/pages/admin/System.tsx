@@ -1,33 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useConfig } from '@/contexts/ConfigContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ImageUpload } from '@/components/admin/ImageUpload';
-import { Settings, RotateCcw, Image, Megaphone } from 'lucide-react';
+import { LoadingState } from '@/components/shared/LoadingState';
+import { ErrorState } from '@/components/shared/ErrorState';
+import { Settings, RotateCcw, Image, Megaphone, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
 
 export default function AdminSystem() {
-  const { config, updateEstablishment } = useConfig();
-  const [name, setName] = useState(config.establishment.name);
-  const [description, setDescription] = useState(config.establishment.description || '');
-  const [logo, setLogo] = useState(config.establishment.logo || '');
-  const [banner, setBanner] = useState(config.establishment.banner || '');
-  const [bannerText, setBannerText] = useState(config.establishment.bannerText || '');
-  const [showBanner, setShowBanner] = useState(config.establishment.showBanner || false);
+  const { config, isLoading, error, updateEstablishment, refetch } = useConfig();
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [logo, setLogo] = useState('');
+  const [banner, setBanner] = useState('');
+  const [bannerText, setBannerText] = useState('');
+  const [showBanner, setShowBanner] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const handleSave = () => {
-    updateEstablishment({ 
-      name, 
-      description, 
-      logo,
-      banner,
-      bannerText,
-      showBanner,
-    });
-    toast.success('Configurações salvas!');
+  // Sync form state with config when loaded
+  useEffect(() => {
+    if (!isLoading && config.establishment) {
+      setName(config.establishment.name || '');
+      setDescription(config.establishment.description || '');
+      setLogo(config.establishment.logo || '');
+      setBanner(config.establishment.banner || '');
+      setBannerText(config.establishment.bannerText || '');
+      setShowBanner(config.establishment.showBanner || false);
+    }
+  }, [isLoading, config.establishment]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaved(false);
+    try {
+      await updateEstablishment({ 
+        name, 
+        description, 
+        logo,
+        banner,
+        bannerText,
+        showBanner,
+      });
+      toast.success('Configurações salvas com sucesso!');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      toast.error('Erro ao salvar configurações');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const clearCache = () => {
@@ -35,6 +61,28 @@ export default function AdminSystem() {
     toast.success('Cache limpo! Recarregando...');
     setTimeout(() => window.location.reload(), 1000);
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <AdminLayout title="Sistema" subtitle="Configurações gerais do sistema">
+        <LoadingState message="Carregando configurações..." size="lg" />
+      </AdminLayout>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <AdminLayout title="Sistema" subtitle="Configurações gerais do sistema">
+        <ErrorState 
+          title="Erro ao carregar configurações"
+          message={error}
+          onRetry={refetch}
+        />
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout title="Sistema" subtitle="Configurações gerais do sistema">
@@ -52,12 +100,12 @@ export default function AdminSystem() {
           </div>
           
           <div>
-            <label className="text-sm text-muted-foreground">Nome do Estabelecimento</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Nome do Estabelecimento</label>
             <Input value={name} onChange={e => setName(e.target.value)} />
           </div>
           
           <div>
-            <label className="text-sm text-muted-foreground">Descrição</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Descrição</label>
             <Input 
               value={description} 
               onChange={e => setDescription(e.target.value)} 
@@ -134,8 +182,25 @@ export default function AdminSystem() {
         </div>
 
         {/* Save Button */}
-        <Button onClick={handleSave} className="w-full" size="lg">
-          Salvar Alterações
+        <Button 
+          onClick={handleSave} 
+          className="w-full gap-2" 
+          size="lg"
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Salvando...
+            </>
+          ) : saved ? (
+            <>
+              <Check className="h-4 w-4" />
+              Salvo!
+            </>
+          ) : (
+            'Salvar Alterações'
+          )}
         </Button>
 
         {/* Maintenance */}
@@ -152,7 +217,7 @@ export default function AdminSystem() {
           <h4 className="font-medium mb-2">Informações</h4>
           <div className="text-sm text-muted-foreground space-y-1">
             <p>Versão: 1.0.0</p>
-            <p>Ambiente: Desenvolvimento</p>
+            <p>Ambiente: Produção</p>
           </div>
         </div>
       </div>

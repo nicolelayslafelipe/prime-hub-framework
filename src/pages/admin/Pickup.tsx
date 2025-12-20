@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ShoppingCart } from 'lucide-react';
 
 export default function AdminPickup() {
-  const { products, categories, toggleProductPickup } = useProducts();
+  const { products, categories } = useProducts();
 
   return (
     <AdminLayout title="Itens para Retirada" subtitle="Configure quais produtos estão disponíveis para retirada">
@@ -39,7 +39,7 @@ export default function AdminPickup() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-muted-foreground">{(product as any).allowPickup !== false ? 'Disponível' : 'Indisponível'}</span>
-                      <Switch checked={(product as any).allowPickup !== false} onCheckedChange={() => toggleProductPickup(product.id)} />
+                      <Switch checked={product.isAvailable} disabled />
                     </div>
                   </div>
                 ))}
