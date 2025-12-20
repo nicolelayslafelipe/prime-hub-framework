@@ -9,6 +9,14 @@ interface Profile {
   name: string;
   phone: string | null;
   address: string | null;
+  avatar_url: string | null;
+}
+
+interface ProfileUpdate {
+  name?: string;
+  phone?: string | null;
+  address?: string | null;
+  avatar_url?: string | null;
 }
 
 interface AuthContextType {
@@ -20,6 +28,10 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name: string, phone?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  updateProfile: (data: ProfileUpdate) => Promise<{ error: Error | null }>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<{ error: Error | null }>;
+  uploadAvatar: (file: File) => Promise<{ url: string | null; error: Error | null }>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -125,6 +137,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(null);
   };
 
+  const updateProfile = async (data: ProfileUpdate) => {
+    if (!user) return { error: new Error('Usuário não autenticado') };
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update(data)
+      .eq('id', user.id);
+    
+    return { error: error ? new Error(error.message) : null };
+  };
+
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user?.email) return { error: new Error('Usuário não autenticado') };
+    
+    // First verify current password by trying to sign in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+    
+    if (signInError) {
+      return { error: new Error('Senha atual incorreta') };
+    }
+    
+    // Update to new password
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    
+    return { error: error ? new Error(error.message) : null };
+  };
+
+  const uploadAvatar = async (file: File) => {
+    if (!user) return { url: null, error: new Error('Usuário não autenticado') };
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/avatar.${fileExt}`;
+    
+    // Delete old avatar if exists
+    await supabase.storage
+      .from('avatars')
+      .remove([fileName]);
+    
+    // Upload new avatar
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, { upsert: true });
+    
+    if (uploadError) {
+      return { url: null, error: new Error(uploadError.message) };
+    }
+    
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+    
+    return { url: publicUrl, error: null };
+  };
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    await fetchUserData(user.id);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -136,6 +213,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
+        updateProfile,
+        updatePassword,
+        uploadAvatar,
+        refreshProfile,
       }}
     >
       {children}

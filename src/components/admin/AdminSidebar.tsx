@@ -4,6 +4,8 @@ import { Logo } from '@/components/shared/Logo';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { useOrders } from '@/contexts/OrderContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -108,6 +110,7 @@ const menuGroups: MenuGroup[] = [
     title: 'Gestão',
     items: [
       { icon: UserCog, label: 'Usuários', path: '/admin/users' },
+      { icon: Users, label: 'Minha Conta', path: '/admin/profile' },
     ],
   },
 ];
@@ -122,6 +125,7 @@ export function AdminSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { config } = useConfig();
+  const { user, profile, signOut } = useAuth();
   const { getPendingOrdersCount } = useOrders();
   const pendingCount = getPendingOrdersCount();
 
@@ -133,8 +137,18 @@ export function AdminSidebar() {
     );
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   return (
@@ -292,23 +306,32 @@ export function AdminSidebar() {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-sidebar-border p-4 shrink-0">
+      <Link 
+        to="/admin/profile"
+        className="border-t border-sidebar-border p-4 shrink-0 hover:bg-secondary/50 transition-colors block"
+      >
         {!isCollapsed ? (
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-              <span className="text-sm font-semibold text-primary">A</span>
-            </div>
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.name} />
+              <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                {profile?.name ? getInitials(profile.name) : 'A'}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">Admin</p>
-              <p className="text-xs text-muted-foreground truncate">admin@deliveryos.com</p>
+              <p className="text-sm font-medium truncate">{profile?.name || 'Admin'}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
           </div>
         ) : (
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mx-auto">
-            <span className="text-sm font-semibold text-primary">A</span>
-          </div>
+          <Avatar className="h-9 w-9 mx-auto">
+            <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.name} />
+            <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+              {profile?.name ? getInitials(profile.name) : 'A'}
+            </AvatarFallback>
+          </Avatar>
         )}
-      </div>
+      </Link>
     </aside>
   );
 }
