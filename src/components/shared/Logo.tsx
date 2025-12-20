@@ -1,4 +1,4 @@
-import { Package } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LogoProps {
@@ -7,28 +7,41 @@ interface LogoProps {
   className?: string;
 }
 
-const sizeClasses = {
-  sm: 'h-6 w-6',
-  md: 'h-8 w-8',
-  lg: 'h-10 w-10',
-};
-
-const textSizes = {
-  sm: 'text-lg',
-  md: 'text-xl',
-  lg: 'text-2xl',
-};
-
 export function Logo({ size = 'md', showText = true, className }: LogoProps) {
+  const sizes = {
+    sm: 'h-8 w-8',
+    md: 'h-10 w-10',
+    lg: 'h-14 w-14',
+  };
+
+  const textSizes = {
+    sm: 'text-lg',
+    md: 'text-xl',
+    lg: 'text-3xl',
+  };
+
   return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <div className="gradient-primary rounded-lg p-1.5 gradient-glow">
-        <Package className={cn('text-primary-foreground', sizeClasses[size])} />
+    <div className={cn('flex items-center gap-3', className)}>
+      <div 
+        className={cn(
+          'relative flex items-center justify-center rounded-xl gradient-primary glow-primary',
+          sizes[size]
+        )}
+      >
+        <Zap className="h-1/2 w-1/2 text-primary-foreground fill-primary-foreground" />
+        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent" />
       </div>
       {showText && (
-        <span className={cn('font-bold text-gradient', textSizes[size])}>
-          DeliveryOS
-        </span>
+        <div className="flex flex-col">
+          <span className={cn('font-black tracking-tight leading-none gradient-text', textSizes[size])}>
+            DeliveryOS
+          </span>
+          {size === 'lg' && (
+            <span className="text-xs text-muted-foreground font-medium tracking-wider uppercase mt-1">
+              Premium Platform
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
