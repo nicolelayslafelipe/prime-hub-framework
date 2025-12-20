@@ -1,0 +1,60 @@
+import { ReactNode, useState } from 'react';
+import { AdminSidebar } from './AdminSidebar';
+import { Bell, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+
+interface AdminLayoutProps {
+  children: ReactNode;
+  title: string;
+  subtitle?: string;
+}
+
+export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
+  const [sidebarCollapsed] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <AdminSidebar />
+      
+      <main
+        className={cn(
+          'transition-all duration-300',
+          sidebarCollapsed ? 'ml-[72px]' : 'ml-64'
+        )}
+      >
+        {/* Header */}
+        <header className="sticky top-0 z-30 glass border-b">
+          <div className="flex h-16 items-center justify-between px-6">
+            <div>
+              <h1 className="text-xl font-semibold">{title}</h1>
+              {subtitle && (
+                <p className="text-sm text-muted-foreground">{subtitle}</p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="relative hidden md:block">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar..."
+                  className="w-64 pl-9 bg-secondary/50 border-border/50"
+                />
+              </div>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-destructive animate-pulse-subtle" />
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="p-6">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}
