@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/shared/Logo';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ClientMenu } from '@/components/client/ClientMenu';
 import { ProductCard } from '@/components/client/ProductCard';
@@ -12,6 +14,13 @@ import { OrderTracking } from '@/components/client/OrderTracking';
 import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher';
 import { mockCategories, mockProducts } from '@/data/mockProducts';
 import { Order } from '@/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   Menu, 
   ShoppingBag, 
@@ -20,12 +29,19 @@ import {
   Truck, 
   MapPin,
   Store,
-  ChevronRight
+  ChevronRight,
+  LogIn,
+  UserPlus,
+  User,
+  LogOut,
+  Settings
 } from 'lucide-react';
 
 export default function ClientPanel() {
+  const navigate = useNavigate();
   const { config } = useConfig();
   const { getItemCount, getSubtotal, setIsCartOpen } = useCart();
+  const { user, profile, signOut } = useAuth();
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -56,6 +72,12 @@ export default function ClientPanel() {
       }];
 
   const handleCheckout = () => {
+    if (!user) {
+      // Save pending checkout intent
+      localStorage.setItem('pendingCheckout', 'true');
+      navigate('/auth?tab=login');
+      return;
+    }
     setIsCartOpen(false);
     setIsCheckoutOpen(true);
   };
@@ -72,6 +94,10 @@ export default function ClientPanel() {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed inset-0 gradient-radial-subtle" />
@@ -81,19 +107,77 @@ export default function ClientPanel() {
         <header className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-50">
           <div className="flex items-center justify-between px-4 md:px-6 h-16">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(true)}>
-                <Menu className="h-5 w-5" />
-              </Button>
+              {user && (
+                <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(true)}>
+                  <Menu className="h-5 w-5" />
+                </Button>
+              )}
               <Logo size="sm" />
             </div>
             <div className="flex items-center gap-2">
               <ThemeSwitcher />
+              
+              {/* Auth Buttons */}
+              {!user ? (
+                <div className="hidden sm:flex items-center gap-2">
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/auth?tab=login">
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Entrar
+                    </Link>
+                  </Button>
+                  <Button size="sm" asChild>
+                    <Link to="/auth?tab=signup">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Cadastrar
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-4 w-4 text-primary" />
+                      </div>
+                      <span className="hidden sm:inline max-w-[100px] truncate">
+                        {profile?.name || 'Usuário'}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => setIsMenuOpen(true)}>
+                      <User className="h-4 w-4 mr-2" />
+                      Meu Perfil
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsMenuOpen(true)}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Configurações
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sair
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              {/* Mobile auth button */}
+              {!user && (
+                <Button variant="outline" size="icon" className="sm:hidden" asChild>
+                  <Link to="/auth">
+                    <LogIn className="h-4 w-4" />
+                  </Link>
+                </Button>
+              )}
+
               <Button 
                 onClick={() => setIsCartOpen(true)}
                 className="bg-primary text-primary-foreground font-medium hover:bg-primary/90"
               >
                 <ShoppingBag className="h-4 w-4 mr-2" />
-                Carrinho
+                <span className="hidden sm:inline">Carrinho</span>
                 {itemCount > 0 && (
                   <span className="ml-2 bg-primary-foreground/20 px-2 py-0.5 rounded text-xs font-bold">
                     {itemCount}

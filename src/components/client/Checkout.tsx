@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { useCart } from '@/contexts/CartContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useOrders } from '@/contexts/OrderContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -33,30 +35,40 @@ const paymentMethods = [
 ];
 
 export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
+  const navigate = useNavigate();
   const { items, getSubtotal, clearCart } = useCart();
   const { config } = useConfig();
   const { addOrder, orders } = useOrders();
+  const { user, profile } = useAuth();
   
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [paymentMethod, setPaymentMethod] = useState('pix');
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState(profile?.address || '');
   const [notes, setNotes] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerName, setCustomerName] = useState(profile?.name || '');
+  const [customerPhone, setCustomerPhone] = useState(profile?.phone || '');
 
   const subtotal = getSubtotal();
   const deliveryFee = config.establishment.deliveryFee;
   const total = subtotal + deliveryFee;
 
   const handlePlaceOrder = () => {
+    // Check if user is authenticated
+    if (!user) {
+      localStorage.setItem('pendingCheckout', 'true');
+      onClose();
+      navigate('/auth?tab=login');
+      return;
+    }
+
     const orderNumber = 1000 + orders.length + 1;
     
     const newOrder: Order = {
       id: `order-${Date.now()}`,
       orderNumber,
-      customerId: 'guest',
-      customerName: customerName || 'Cliente',
-      customerPhone: customerPhone || '(00) 00000-0000',
+      customerId: user.id,
+      customerName: customerName || profile?.name || 'Cliente',
+      customerPhone: customerPhone || profile?.phone || '(00) 00000-0000',
       customerAddress: address || 'Endereço não informado',
       items: items.map((item, index) => ({
         id: `item-${index}`,
