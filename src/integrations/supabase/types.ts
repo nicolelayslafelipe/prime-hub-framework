@@ -57,6 +57,8 @@ export type Database = {
       }
       orders: {
         Row: {
+          change_amount: number | null
+          change_for: number | null
           created_at: string | null
           customer_address: string
           customer_id: string
@@ -65,6 +67,7 @@ export type Database = {
           delivery_fee: number | null
           id: string
           motoboy_id: string | null
+          needs_change: boolean | null
           notes: string | null
           order_number: number
           payment_method: string
@@ -74,6 +77,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          change_amount?: number | null
+          change_for?: number | null
           created_at?: string | null
           customer_address: string
           customer_id: string
@@ -82,6 +87,7 @@ export type Database = {
           delivery_fee?: number | null
           id?: string
           motoboy_id?: string | null
+          needs_change?: boolean | null
           notes?: string | null
           order_number?: number
           payment_method: string
@@ -91,6 +97,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          change_amount?: number | null
+          change_for?: number | null
           created_at?: string | null
           customer_address?: string
           customer_id?: string
@@ -99,6 +107,7 @@ export type Database = {
           delivery_fee?: number | null
           id?: string
           motoboy_id?: string | null
+          needs_change?: boolean | null
           notes?: string | null
           order_number?: number
           payment_method?: string

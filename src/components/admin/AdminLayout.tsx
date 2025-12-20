@@ -1,9 +1,10 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode } from 'react';
 import { AdminSidebar } from './AdminSidebar';
 import { Bell, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -13,7 +14,7 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children, title, subtitle, headerRight }: AdminLayoutProps) {
-  const [sidebarCollapsed] = useState(false);
+  const { isCollapsed } = useSidebar();
 
   return (
     <div className="min-h-screen bg-background">
@@ -21,8 +22,8 @@ export function AdminLayout({ children, title, subtitle, headerRight }: AdminLay
       
       <main
         className={cn(
-          'transition-all duration-300',
-          sidebarCollapsed ? 'ml-[72px]' : 'ml-64'
+          'transition-all duration-300 ease-in-out',
+          isCollapsed ? 'ml-[72px]' : 'ml-64'
         )}
       >
         {/* Header */}

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/shared/Logo';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClientOrders } from '@/hooks/useClientOrders';
 import { Button } from '@/components/ui/button';
 import { ClientMenu } from '@/components/client/ClientMenu';
 import { ProductCard } from '@/components/client/ProductCard';
@@ -42,12 +43,18 @@ export default function ClientPanel() {
   const { config } = useConfig();
   const { getItemCount, getSubtotal, setIsCartOpen } = useCart();
   const { user, profile, signOut } = useAuth();
+  const { orders: clientOrders } = useClientOrders(user?.id);
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
-  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+
+  // Get the current order from realtime data
+  const currentOrder = currentOrderId 
+    ? clientOrders.find(o => o.id === currentOrderId) || null 
+    : clientOrders[0] || null;
 
   const itemCount = getItemCount();
   const subtotal = getSubtotal();
@@ -84,7 +91,7 @@ export default function ClientPanel() {
 
   const handleOrderPlaced = (order: Order) => {
     setIsCheckoutOpen(false);
-    setCurrentOrder(order);
+    setCurrentOrderId(order.id);
     setIsTrackingOpen(true);
   };
 

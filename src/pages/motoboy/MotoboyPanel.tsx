@@ -5,7 +5,7 @@ import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, Bike, MapPin, Phone, CheckCircle2, Navigation } from 'lucide-react';
+import { Clock, Bike, MapPin, Phone, CheckCircle2, Navigation, Coins } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -164,15 +164,32 @@ export default function MotoboyPanel() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Total a cobrar:</span>
-                        <span className="text-xl font-bold text-primary">R$ {order.total.toFixed(2)}</span>
-                      </div>
+                                        <span className="text-muted-foreground">Total a cobrar:</span>
+                                        <span className="text-xl font-bold text-primary">R$ {order.total.toFixed(2)}</span>
+                                      </div>
 
-                      {order.notes && (
-                        <div className="bg-warning/10 rounded-lg px-3 py-2">
-                          <p className="text-sm text-warning font-medium">Obs: {order.notes}</p>
-                        </div>
-                      )}
+                                      {order.needsChange && order.changeFor && order.changeAmount !== undefined && (
+                                        <div className="bg-accent/10 rounded-lg px-3 py-2 border border-accent/20">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <Coins className="h-4 w-4 text-accent" />
+                                            <span className="text-sm font-bold text-accent">TROCO NECESSÁRIO</span>
+                                          </div>
+                                          <div className="flex justify-between text-sm">
+                                            <span>Cliente pagará:</span>
+                                            <span className="font-bold">R$ {order.changeFor.toFixed(2)}</span>
+                                          </div>
+                                          <div className="flex justify-between text-sm">
+                                            <span>Levar troco de:</span>
+                                            <span className="font-bold text-accent">R$ {order.changeAmount.toFixed(2)}</span>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {order.notes && (
+                                        <div className="bg-warning/10 rounded-lg px-3 py-2">
+                                          <p className="text-sm text-warning font-medium">Obs: {order.notes}</p>
+                                        </div>
+                                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">

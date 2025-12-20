@@ -1,7 +1,7 @@
 import { Order } from '@/types';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Clock, MapPin, Phone, User, ChevronRight, Utensils } from 'lucide-react';
+import { Clock, MapPin, Phone, User, ChevronRight, Utensils, Coins } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -119,6 +119,24 @@ export function OrderCard({
             <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse" />
             Obs: {order.notes}
           </p>
+        </div>
+      )}
+
+      {/* Change Info */}
+      {order.needsChange && order.changeFor && order.changeAmount !== undefined && (
+        <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20">
+          <div className="flex items-center gap-2 text-accent">
+            <Coins className="h-4 w-4" />
+            <span className="text-xs font-semibold">TROCO</span>
+          </div>
+          <div className="mt-2 flex justify-between text-sm">
+            <span className="text-muted-foreground">Pagará com:</span>
+            <span className="font-bold">R$ {order.changeFor.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Troco:</span>
+            <span className="font-bold text-accent">R$ {order.changeAmount.toFixed(2)}</span>
+          </div>
         </div>
       )}
 

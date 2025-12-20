@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCart } from '@/contexts/CartContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useOrders } from '@/contexts/OrderContext';
@@ -17,7 +18,8 @@ import {
   CreditCard, 
   Banknote, 
   Smartphone,
-  CheckCircle2
+  CheckCircle2,
+  Coins
 } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -31,7 +33,7 @@ const paymentMethods = [
   { id: 'pix', label: 'PIX', icon: Smartphone, description: 'Pagamento instantâneo' },
   { id: 'credit', label: 'Cartão de Crédito', icon: CreditCard, description: 'Visa, Master, Elo' },
   { id: 'debit', label: 'Cartão de Débito', icon: CreditCard, description: 'Na entrega' },
-  { id: 'cash', label: 'Dinheiro', icon: Banknote, description: 'Precisa de troco?' },
+  { id: 'cash', label: 'Dinheiro', icon: Banknote, description: 'Pagamento na entrega' },
 ];
 
 export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
@@ -47,10 +49,17 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   const [notes, setNotes] = useState('');
   const [customerName, setCustomerName] = useState(profile?.name || '');
   const [customerPhone, setCustomerPhone] = useState(profile?.phone || '');
+  
+  // Change fields for cash payment
+  const [needsChange, setNeedsChange] = useState(false);
+  const [changeFor, setChangeFor] = useState<string>('');
 
   const subtotal = getSubtotal();
   const deliveryFee = config.establishment.deliveryFee;
   const total = subtotal + deliveryFee;
+  
+  const changeForNumber = parseFloat(changeFor) || 0;
+  const changeAmount = changeForNumber > total ? changeForNumber - total : 0;
 
   const handlePlaceOrder = () => {
     // Check if user is authenticated
@@ -83,9 +92,12 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
       deliveryFee,
       total,
       paymentMethod: paymentMethods.find(p => p.id === paymentMethod)?.label || 'PIX',
-      notes,
+      notes: buildOrderNotes(),
       createdAt: new Date(),
       updatedAt: new Date(),
+      needsChange: paymentMethod === 'cash' && needsChange,
+      changeFor: paymentMethod === 'cash' && needsChange ? changeForNumber : undefined,
+      changeAmount: paymentMethod === 'cash' && needsChange ? changeAmount : undefined,
     };
 
     addOrder(newOrder);
@@ -98,8 +110,19 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     }, 2000);
   };
 
+  const buildOrderNotes = () => {
+    let orderNotes = notes;
+    if (paymentMethod === 'cash' && needsChange && changeForNumber > 0) {
+      const changeNote = `💵 Troco para R$ ${changeForNumber.toFixed(2)} (troco: R$ ${changeAmount.toFixed(2)})`;
+      orderNotes = orderNotes ? `${orderNotes}\n${changeNote}` : changeNote;
+    }
+    return orderNotes;
+  };
+
   const handleClose = () => {
     setStep('form');
+    setNeedsChange(false);
+    setChangeFor('');
     onClose();
   };
 
@@ -179,7 +202,13 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                   <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs text-primary font-bold">3</div>
                   Forma de pagamento
                 </h3>
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-2">
+                <RadioGroup value={paymentMethod} onValueChange={(value) => {
+                  setPaymentMethod(value);
+                  if (value !== 'cash') {
+                    setNeedsChange(false);
+                    setChangeFor('');
+                  }
+                }} className="space-y-2">
                   {paymentMethods.map((method) => (
                     <label
                       key={method.id}
@@ -198,6 +227,61 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                     </label>
                   ))}
                 </RadioGroup>
+
+                {/* Change fields for cash payment */}
+                {paymentMethod === 'cash' && (
+                  <div className="space-y-4 p-4 rounded-lg bg-muted/50 border border-border animate-fade-in">
+                    <div className="flex items-center gap-3">
+                      <Checkbox 
+                        id="needs-change"
+                        checked={needsChange}
+                        onCheckedChange={(checked) => {
+                          setNeedsChange(checked as boolean);
+                          if (!checked) setChangeFor('');
+                        }}
+                      />
+                      <Label htmlFor="needs-change" className="font-medium cursor-pointer">
+                        Precisa de troco?
+                      </Label>
+                    </div>
+
+                    {needsChange && (
+                      <div className="space-y-3 animate-fade-in">
+                        <div className="space-y-2">
+                          <Label htmlFor="change-for">Troco para quanto?</Label>
+                          <div className="relative">
+                            <Coins className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              id="change-for"
+                              type="number"
+                              placeholder="Ex: 100.00"
+                              value={changeFor}
+                              onChange={(e) => setChangeFor(e.target.value)}
+                              min={total}
+                              step="0.01"
+                              className="pl-10 bg-background"
+                            />
+                          </div>
+                        </div>
+
+                        {changeForNumber > 0 && (
+                          <div className={`p-3 rounded-lg ${changeForNumber >= total ? 'bg-accent/10 border border-accent/20' : 'bg-destructive/10 border border-destructive/20'}`}>
+                            {changeForNumber >= total ? (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">Troco a receber:</span>
+                                <span className="text-lg font-bold text-accent">R$ {changeAmount.toFixed(2)}</span>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-destructive font-medium">
+                                O valor deve ser maior que o total do pedido (R$ {total.toFixed(2)})
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <Separator />
@@ -242,6 +326,24 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                   <span>Total</span>
                   <span className="text-primary font-mono">R$ {total.toFixed(2)}</span>
                 </div>
+                
+                {/* Change info in summary */}
+                {paymentMethod === 'cash' && needsChange && changeForNumber >= total && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Coins className="h-3 w-3" />
+                        Troco para
+                      </span>
+                      <span className="font-mono">R$ {changeForNumber.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-medium text-accent">
+                      <span>Troco</span>
+                      <span className="font-mono">R$ {changeAmount.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -249,7 +351,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
               <Button 
                 className="w-full h-12 font-semibold text-base"
                 onClick={handlePlaceOrder}
-                disabled={items.length === 0}
+                disabled={items.length === 0 || (paymentMethod === 'cash' && needsChange && changeForNumber < total)}
               >
                 Confirmar Pedido
               </Button>

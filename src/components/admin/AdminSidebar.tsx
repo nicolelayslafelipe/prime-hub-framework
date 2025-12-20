@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/shared/Logo';
 import { useConfig } from '@/contexts/ConfigContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { useOrders } from '@/contexts/OrderContext';
 import {
   LayoutDashboard,
@@ -112,8 +112,10 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
+import { useState } from 'react';
+
 export function AdminSidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, toggleSidebar } = useSidebar();
   const [openGroups, setOpenGroups] = useState<string[]>(
     menuGroups.filter(g => g.defaultOpen).map(g => g.title)
   );
@@ -149,7 +151,7 @@ export function AdminSidebar() {
           variant="ghost"
           size="icon"
           className="h-8 w-8 text-muted-foreground hover:text-foreground"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={toggleSidebar}
         >
           {isCollapsed ? (
             <ChevronRight className="h-4 w-4" />
