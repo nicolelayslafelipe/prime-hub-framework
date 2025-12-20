@@ -1,6 +1,7 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback } from 'react';
 import { Order, OrderStatus } from '@/types';
 import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -20,7 +21,19 @@ interface OrderContextType {
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 export function OrderProvider({ children }: { children: ReactNode }) {
-  const realtimeOrders = useRealtimeOrders();
+  const { playNewOrderSound } = useNotificationSound();
+
+  const handleNewOrder = useCallback((order: Order) => {
+    console.log('New order received:', order.orderNumber);
+    // Play sound for new pending orders
+    if (order.status === 'pending') {
+      playNewOrderSound();
+    }
+  }, [playNewOrderSound]);
+
+  const realtimeOrders = useRealtimeOrders({
+    onNewOrder: handleNewOrder,
+  });
 
   return (
     <OrderContext.Provider value={realtimeOrders}>
