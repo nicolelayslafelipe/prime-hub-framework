@@ -65,6 +65,96 @@ export type Database = {
         }
         Relationships: []
       }
+      categories: {
+        Row: {
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      establishment_settings: {
+        Row: {
+          address: string | null
+          banner: string | null
+          banner_text: string | null
+          created_at: string | null
+          delivery_fee: number | null
+          description: string | null
+          estimated_delivery_time: number | null
+          id: string
+          is_delivery_enabled: boolean | null
+          is_open: boolean | null
+          logo: string | null
+          min_order_value: number | null
+          name: string
+          phone: string | null
+          show_banner: boolean | null
+          updated_at: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: string | null
+          banner?: string | null
+          banner_text?: string | null
+          created_at?: string | null
+          delivery_fee?: number | null
+          description?: string | null
+          estimated_delivery_time?: number | null
+          id?: string
+          is_delivery_enabled?: boolean | null
+          is_open?: boolean | null
+          logo?: string | null
+          min_order_value?: number | null
+          name?: string
+          phone?: string | null
+          show_banner?: boolean | null
+          updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: string | null
+          banner?: string | null
+          banner_text?: string | null
+          created_at?: string | null
+          delivery_fee?: number | null
+          description?: string | null
+          estimated_delivery_time?: number | null
+          id?: string
+          is_delivery_enabled?: boolean | null
+          is_open?: boolean | null
+          logo?: string | null
+          min_order_value?: number | null
+          name?: string
+          phone?: string | null
+          show_banner?: boolean | null
+          updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           additions: string[] | null
@@ -165,6 +255,54 @@ export type Database = {
           status?: string
           subtotal?: number
           total?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          allow_pickup: boolean | null
+          category_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          image: string | null
+          is_available: boolean | null
+          name: string
+          preparation_time: number | null
+          price: number
+          sort_order: number | null
+          tag: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          allow_pickup?: boolean | null
+          category_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image?: string | null
+          is_available?: boolean | null
+          name: string
+          preparation_time?: number | null
+          price: number
+          sort_order?: number | null
+          tag?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          allow_pickup?: boolean | null
+          category_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image?: string | null
+          is_available?: boolean | null
+          name?: string
+          preparation_time?: number | null
+          price?: number
+          sort_order?: number | null
+          tag?: string | null
           updated_at?: string | null
         }
         Relationships: []
