@@ -13,10 +13,8 @@ import {
   ChevronRight,
   Store,
   Truck,
-  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
@@ -35,18 +33,18 @@ export function AdminSidebar() {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen glass border-r transition-all duration-300',
+        'fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300',
         isCollapsed ? 'w-[72px]' : 'w-64'
       )}
     >
       <div className="flex h-full flex-col">
         {/* Header */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-border/50">
+        <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
           <Logo size="sm" showText={!isCollapsed} />
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={() => setIsCollapsed(!isCollapsed)}
           >
             {isCollapsed ? (
@@ -62,10 +60,10 @@ export function AdminSidebar() {
           <div className="p-4 space-y-2">
             <div
               className={cn(
-                'flex items-center gap-2 rounded-lg px-3 py-2 text-sm',
+                'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm border',
                 config.establishment.isOpen
-                  ? 'bg-success/10 text-success'
-                  : 'bg-destructive/10 text-destructive'
+                  ? 'bg-accent/10 border-accent/20 text-accent'
+                  : 'bg-destructive/10 border-destructive/20 text-destructive'
               )}
             >
               <Store className="h-4 w-4" />
@@ -75,10 +73,10 @@ export function AdminSidebar() {
             </div>
             <div
               className={cn(
-                'flex items-center gap-2 rounded-lg px-3 py-2 text-sm',
+                'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm border',
                 config.establishment.isDeliveryEnabled
-                  ? 'bg-primary/10 text-primary'
-                  : 'bg-muted text-muted-foreground'
+                  ? 'bg-primary/10 border-primary/20 text-primary'
+                  : 'bg-muted border-border text-muted-foreground'
               )}
             >
               <Truck className="h-4 w-4" />
@@ -102,7 +100,7 @@ export function AdminSidebar() {
                     className={cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
                       isActive
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-primary/10 text-primary border-l-2 border-primary ml-[-1px]'
                         : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                     )}
                   >
@@ -111,9 +109,9 @@ export function AdminSidebar() {
                       <span className="flex-1">{item.label}</span>
                     )}
                     {!isCollapsed && item.hasBadge && pendingCount > 0 && (
-                      <Badge variant="destructive" className="h-5 min-w-5 px-1.5">
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground">
                         {pendingCount}
-                      </Badge>
+                      </span>
                     )}
                   </Link>
                 </li>
@@ -123,11 +121,11 @@ export function AdminSidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-border/50 p-4">
+        <div className="border-t border-sidebar-border p-4">
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-sm font-medium text-primary">A</span>
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-semibold text-primary">A</span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">Admin</p>
@@ -135,8 +133,8 @@ export function AdminSidebar() {
               </div>
             </div>
           ) : (
-            <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
-              <span className="text-sm font-medium text-primary">A</span>
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mx-auto">
+              <span className="text-sm font-semibold text-primary">A</span>
             </div>
           )}
         </div>
