@@ -16,6 +16,7 @@ interface ProductContextType {
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   toggleProduct: (id: string) => Promise<void>;
+  reorderProducts: (products: Product[]) => Promise<void>;
   getProductsByCategory: (categoryId: string) => Product[];
   refetch: () => Promise<void>;
 }
@@ -214,6 +215,22 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     if (product) await updateProduct(id, { isAvailable: !product.isAvailable });
   };
 
+  const reorderProducts = async (newOrder: Product[]) => {
+    const backup = products;
+    setProducts(newOrder);
+
+    try {
+      // Atualiza sort_order de cada produto
+      const updates = newOrder.map((product, index) => 
+        supabase.from('products').update({ sort_order: index }).eq('id', product.id)
+      );
+      await Promise.all(updates);
+    } catch (err) {
+      console.error('Error reordering products:', err);
+      setProducts(backup);
+    }
+  };
+
   const getProductsByCategory = (categoryId: string) => products.filter(p => p.categoryId === categoryId);
 
   return (
@@ -232,6 +249,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         updateProduct,
         deleteProduct,
         toggleProduct,
+        reorderProducts,
         getProductsByCategory,
         refetch: fetchData,
       }}
