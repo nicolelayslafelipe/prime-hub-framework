@@ -12,7 +12,7 @@ import {
   TrendingUp,
   Store,
   Truck,
-  Zap,
+  Package,
   ArrowRight,
 } from 'lucide-react';
 import { OrderStatus } from '@/types';
@@ -49,15 +49,14 @@ export default function AdminDashboard() {
     <AdminLayout title="Dashboard" subtitle="Visão geral do estabelecimento">
       {/* Quick Controls */}
       <div className="grid gap-4 md:grid-cols-2 mb-8">
-        <div className="group relative p-6 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-xl overflow-hidden transition-all duration-300 hover:border-success/30">
-          <div className={`absolute inset-0 bg-gradient-to-br ${config.establishment.isOpen ? 'from-success/10 to-transparent' : 'from-destructive/10 to-transparent'} opacity-50`} />
-          <div className="relative flex items-center justify-between">
+        <div className="card-premium p-5 transition-all duration-300 hover:shadow-premium-lg">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-xl ${config.establishment.isOpen ? 'bg-success/20 shadow-[0_0_30px_-5px_hsl(var(--success)/0.5)]' : 'bg-destructive/20'}`}>
-                <Store className={`h-6 w-6 ${config.establishment.isOpen ? 'text-success' : 'text-destructive'}`} />
+              <div className={`p-3 rounded-lg ${config.establishment.isOpen ? 'bg-accent/15 text-accent' : 'bg-destructive/15 text-destructive'}`}>
+                <Store className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-bold text-lg">Estabelecimento</p>
+                <p className="font-semibold">Estabelecimento</p>
                 <p className="text-sm text-muted-foreground">
                   {config.establishment.isOpen ? 'Aberto para pedidos' : 'Fechado'}
                 </p>
@@ -66,20 +65,19 @@ export default function AdminDashboard() {
             <Switch
               checked={config.establishment.isOpen}
               onCheckedChange={toggleEstablishment}
-              className="data-[state=checked]:bg-success"
+              className="data-[state=checked]:bg-accent"
             />
           </div>
         </div>
 
-        <div className="group relative p-6 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-xl overflow-hidden transition-all duration-300 hover:border-primary/30">
-          <div className={`absolute inset-0 bg-gradient-to-br ${config.establishment.isDeliveryEnabled ? 'from-primary/10 to-transparent' : 'from-muted/10 to-transparent'} opacity-50`} />
-          <div className="relative flex items-center justify-between">
+        <div className="card-premium p-5 transition-all duration-300 hover:shadow-premium-lg">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-xl ${config.establishment.isDeliveryEnabled ? 'bg-primary/20 shadow-[0_0_30px_-5px_hsl(var(--primary)/0.5)]' : 'bg-muted'}`}>
-                <Truck className={`h-6 w-6 ${config.establishment.isDeliveryEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+              <div className={`p-3 rounded-lg ${config.establishment.isDeliveryEnabled ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                <Truck className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-bold text-lg">Delivery</p>
+                <p className="font-semibold">Delivery</p>
                 <p className="text-sm text-muted-foreground">
                   {config.establishment.isDeliveryEnabled ? 'Ativo e funcionando' : 'Pausado'}
                 </p>
@@ -99,29 +97,29 @@ export default function AdminDashboard() {
           title="Pedidos Hoje"
           value={todayOrders}
           change={12}
-          icon={<ShoppingBag className="h-7 w-7" />}
-          accentColor="primary"
+          icon={<ShoppingBag className="h-6 w-6" />}
+          accentColor="gold"
         />
         <StatsCard
           title="Receita Hoje"
           value={`R$ ${todayRevenue.toFixed(2)}`}
           change={8}
-          icon={<DollarSign className="h-7 w-7" />}
-          accentColor="success"
+          icon={<DollarSign className="h-6 w-6" />}
+          accentColor="emerald"
         />
         <StatsCard
           title="Tempo Médio"
           value={`${avgDeliveryTime} min`}
           change={-5}
-          icon={<Clock className="h-7 w-7" />}
-          accentColor="warning"
+          icon={<Clock className="h-6 w-6" />}
+          accentColor="sapphire"
         />
         <StatsCard
           title="Taxa de Conclusão"
           value="98%"
           change={2}
-          icon={<TrendingUp className="h-7 w-7" />}
-          accentColor="neon-blue"
+          icon={<TrendingUp className="h-6 w-6" />}
+          accentColor="default"
         />
       </div>
 
@@ -129,11 +127,11 @@ export default function AdminDashboard() {
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Pending Orders */}
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold flex items-center gap-3">
-              <span className="h-3 w-3 rounded-full bg-status-pending animate-pulse shadow-[0_0_10px_hsl(var(--status-pending))]" />
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-semibold flex items-center gap-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-status-pending" />
               Pendentes
-              <span className="text-base font-normal text-muted-foreground">({pendingOrders.length})</span>
+              <span className="text-sm font-normal text-muted-foreground">({pendingOrders.length})</span>
             </h2>
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
               Ver todos
@@ -150,8 +148,8 @@ export default function AdminDashboard() {
                 />
               ))
             ) : (
-              <div className="p-12 rounded-2xl border border-border/50 bg-card/30 text-center">
-                <Zap className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+              <div className="card-premium p-10 text-center">
+                <Package className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
                 <p className="text-muted-foreground">Nenhum pedido pendente</p>
               </div>
             )}
@@ -160,11 +158,11 @@ export default function AdminDashboard() {
 
         {/* Preparing Orders */}
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold flex items-center gap-3">
-              <span className="h-3 w-3 rounded-full bg-status-preparing animate-pulse shadow-[0_0_10px_hsl(var(--status-preparing))]" />
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-semibold flex items-center gap-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-status-preparing" />
               Em Preparação
-              <span className="text-base font-normal text-muted-foreground">({preparingOrders.length})</span>
+              <span className="text-sm font-normal text-muted-foreground">({preparingOrders.length})</span>
             </h2>
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
               Ver todos
@@ -181,8 +179,8 @@ export default function AdminDashboard() {
                 />
               ))
             ) : (
-              <div className="p-12 rounded-2xl border border-border/50 bg-card/30 text-center">
-                <Zap className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+              <div className="card-premium p-10 text-center">
+                <Package className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
                 <p className="text-muted-foreground">Nenhum pedido em preparação</p>
               </div>
             )}
