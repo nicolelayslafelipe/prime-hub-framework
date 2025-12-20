@@ -1,24 +1,32 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useProducts } from '@/contexts/ProductContext';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { ProductForm } from '@/components/admin/ProductForm';
+import { SortableProductCard } from '@/components/admin/SortableProductCard';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { Plus, Edit, Trash2, Copy } from 'lucide-react';
+import { Plus, ArrowUpDown } from 'lucide-react';
 import { Product } from '@/data/mockProducts';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-
-// Check if image is a real URL or just an emoji
-const isRealImage = (image: string): boolean => {
-  if (!image || typeof image !== 'string') return false;
-  return image.startsWith('http') || image.startsWith('/') || image.startsWith('data:');
-};
 
 export default function AdminProducts() {
   const { 
@@ -30,6 +38,7 @@ export default function AdminProducts() {
     updateProduct, 
     deleteProduct, 
     toggleProduct,
+    reorderProducts,
     refetch 
   } = useProducts();
   
@@ -39,8 +48,48 @@ export default function AdminProducts() {
   const [filter, setFilter] = useState('all');
   const [isSaving, setIsSaving] = useState(false);
   const [modalKey, setModalKey] = useState(0);
+  const [isReorderMode, setIsReorderMode] = useState(false);
 
-  const filteredProducts = filter === 'all' ? products : products.filter(p => p.categoryId === filter);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const filteredProducts = useMemo(() => {
+    return filter === 'all' ? products : products.filter(p => p.categoryId === filter);
+  }, [filter, products]);
+
+  const productIds = useMemo(() => filteredProducts.map(p => p.id), [filteredProducts]);
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = filteredProducts.findIndex(p => p.id === active.id);
+      const newIndex = filteredProducts.findIndex(p => p.id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        // Se estiver filtrando por categoria, reordena apenas os produtos filtrados
+        if (filter !== 'all') {
+          const reordered = arrayMove(filteredProducts, oldIndex, newIndex);
+          // Reconstruir array completo mantendo ordem dos outros
+          const otherProducts = products.filter(p => p.categoryId !== filter);
+          const newOrder = [...otherProducts, ...reordered];
+          await reorderProducts(newOrder);
+        } else {
+          const newOrder = arrayMove(products, oldIndex, newIndex);
+          await reorderProducts(newOrder);
+        }
+        toast.success('Ordem atualizada');
+      }
+    }
+  }, [filteredProducts, filter, products, reorderProducts]);
 
   const handleSubmit = useCallback(async (formData: {
     name: string;
@@ -66,7 +115,6 @@ export default function AdminProducts() {
         preparationTime: 15 
       };
       
-      // Se editingProduct tem ID, é edição. Senão, é novo produto (ou duplicação)
       if (editingProduct?.id) {
         await updateProduct(editingProduct.id, data);
       } else {
@@ -87,10 +135,9 @@ export default function AdminProducts() {
   }, []);
 
   const handleDuplicate = useCallback((product: Product) => {
-    // Cria uma cópia do produto sem o ID (será um novo produto)
     const duplicatedProduct = {
       ...product,
-      id: '', // ID vazio para indicar novo produto
+      id: '',
       name: `${product.name} (Cópia)`,
     } as Product;
     
@@ -120,7 +167,6 @@ export default function AdminProducts() {
     }
   };
 
-  // Loading state
   if (isLoading) {
     return (
       <AdminLayout title="Produtos" subtitle="Gerencie os produtos do cardápio">
@@ -129,7 +175,6 @@ export default function AdminProducts() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <AdminLayout title="Produtos" subtitle="Gerencie os produtos do cardápio">
@@ -144,16 +189,35 @@ export default function AdminProducts() {
 
   return (
     <AdminLayout title="Produtos" subtitle="Gerencie os produtos do cardápio">
-      <div className="flex justify-between items-center mb-6 gap-4">
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar categoria" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas categorias</SelectItem>
-            {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Button onClick={handleOpenNewProduct} className="gap-2"><Plus className="h-4 w-4" /> Novo Produto</Button>
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+        <div className="flex items-center gap-3">
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar categoria" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas categorias</SelectItem>
+              {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button 
+            variant={isReorderMode ? "default" : "outline"} 
+            onClick={() => setIsReorderMode(!isReorderMode)}
+            className="gap-2"
+          >
+            <ArrowUpDown className="h-4 w-4" />
+            {isReorderMode ? 'Modo Ordenação' : 'Reordenar'}
+          </Button>
+        </div>
+        <Button onClick={handleOpenNewProduct} className="gap-2">
+          <Plus className="h-4 w-4" /> Novo Produto
+        </Button>
       </div>
+
+      {isReorderMode && (
+        <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm text-primary">
+          <ArrowUpDown className="h-4 w-4 inline mr-2" />
+          Arraste os produtos para reordenar. A ordem será salva automaticamente.
+        </div>
+      )}
 
       {filteredProducts.length === 0 ? (
         <div className="text-center py-12">
@@ -163,73 +227,29 @@ export default function AdminProducts() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProducts.map(product => {
-            const hasRealImage = isRealImage(product.image);
-            
-            return (
-              <div key={product.id} className={cn("card-premium p-4 transition-all", !product.isAvailable && "opacity-60")}>
-                <div className="flex items-start gap-3 mb-3">
-                  {hasRealImage ? (
-                    <div className="h-14 w-14 rounded-lg overflow-hidden border border-border/50 flex-shrink-0 bg-muted">
-                      <img 
-                        src={product.image} 
-                        alt={product.name}
-                        className="h-full w-full object-cover"
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          target.style.display = 'none';
-                          const parent = target.parentElement;
-                          if (parent) {
-                            const fallback = document.createElement('div');
-                            fallback.className = 'h-full w-full bg-muted flex items-center justify-center text-lg';
-                            fallback.textContent = '🍔';
-                            parent.appendChild(fallback);
-                          }
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-14 w-14 rounded-lg bg-muted flex items-center justify-center text-2xl flex-shrink-0">
-                      {product.image || '🍔'}
-                    </div>
-                  )}
-                  
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{product.name}</p>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {categories.find(c => c.id === product.categoryId)?.name}
-                    </p>
-                  </div>
-                  {product.tag && (
-                    <span className="text-xs px-2 py-1 rounded-full bg-primary/20 text-primary flex-shrink-0">
-                      {product.tag}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{product.description}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-accent">R$ {product.price.toFixed(2)}</span>
-                  <div className="flex items-center gap-1">
-                    <Switch checked={product.isAvailable} onCheckedChange={() => toggleProduct(product.id)} />
-                    <Button variant="ghost" size="icon" onClick={() => handleDuplicate(product)} title="Duplicar produto">
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(product)} title="Editar produto">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteId(product.id)} title="Excluir produto">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={productIds} strategy={rectSortingStrategy}>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredProducts.map(product => (
+                <SortableProductCard
+                  key={product.id}
+                  product={product}
+                  categories={categories}
+                  onEdit={handleEdit}
+                  onDuplicate={handleDuplicate}
+                  onDelete={setDeleteId}
+                  onToggle={toggleProduct}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
-      {/* Modal de Produto */}
       <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
         <DialogContent className="bg-card border-border max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
