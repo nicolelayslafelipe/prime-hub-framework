@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Category, Product, mockCategories, mockProducts } from '@/data/mockProducts';
+import { Category, Product } from '@/data/mockProducts';
 
 interface ProductContextType {
   categories: Category[];
@@ -24,8 +24,8 @@ interface ProductContextType {
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export function ProductProvider({ children }: { children: ReactNode }) {
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,29 +47,26 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
       if (prodError) throw prodError;
 
-      if (catData && catData.length > 0) {
-        setCategories(catData.map(c => ({
-          id: c.id,
-          name: c.name,
-          icon: c.icon || '🍔',
-          description: '',
-          isActive: c.is_active ?? true,
-        })));
-      }
+      // Sempre usar dados do banco, mesmo se vazio
+      setCategories((catData || []).map(c => ({
+        id: c.id,
+        name: c.name,
+        icon: c.icon || '🍔',
+        description: '',
+        isActive: c.is_active ?? true,
+      })));
 
-      if (prodData && prodData.length > 0) {
-        setProducts(prodData.map(p => ({
-          id: p.id,
-          name: p.name,
-          description: p.description || '',
-          price: Number(p.price),
-          image: p.image || '🍔',
-          categoryId: p.category_id,
-          tag: p.tag as Product['tag'],
-          isAvailable: p.is_available ?? true,
-          preparationTime: p.preparation_time || 15,
-        })));
-      }
+      setProducts((prodData || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description || '',
+        price: Number(p.price),
+        image: p.image || '🍔',
+        categoryId: p.category_id,
+        tag: p.tag as Product['tag'],
+        isAvailable: p.is_available ?? true,
+        preparationTime: p.preparation_time || 15,
+      })));
     } catch (err) {
       console.error('Error fetching products/categories:', err);
       setError('Erro ao carregar produtos');
