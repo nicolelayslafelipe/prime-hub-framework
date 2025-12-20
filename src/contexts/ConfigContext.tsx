@@ -42,6 +42,10 @@ const defaultModules: ModuleSettings = {
   reviews: false,
   scheduling: false,
   multipleAddresses: false,
+  onlinePayment: false,
+  mercadoPago: false,
+  recaptcha: false,
+  firstOrderVerification: false,
 };
 
 const defaultConfig: SystemConfig = {

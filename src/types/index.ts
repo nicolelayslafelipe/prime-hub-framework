@@ -11,6 +11,7 @@ export interface User {
   avatar?: string;
   createdAt: Date;
   isActive: boolean;
+  lastAccess?: Date;
 }
 
 export type OrderStatus = 
@@ -55,12 +56,16 @@ export interface Order {
 export interface EstablishmentSettings {
   id: string;
   name: string;
+  description?: string;
   logo?: string;
+  banner?: string;
+  showBanner?: boolean;
   isOpen: boolean;
   isDeliveryEnabled: boolean;
   minOrderValue: number;
   deliveryFee: number;
-  estimatedDeliveryTime: number; // in minutes
+  estimatedDeliveryTime: number;
+  deliveryArea?: string;
   operatingHours: {
     [key: string]: {
       open: string;
@@ -95,6 +100,10 @@ export interface ModuleSettings {
   reviews: boolean;
   scheduling: boolean;
   multipleAddresses: boolean;
+  onlinePayment: boolean;
+  mercadoPago: boolean;
+  recaptcha: boolean;
+  firstOrderVerification: boolean;
 }
 
 export interface SystemConfig {
@@ -112,4 +121,101 @@ export interface DashboardStats {
   averageDeliveryTime: number;
   ordersChange: number;
   revenueChange: number;
+}
+
+// Client Types
+export interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderDate?: Date;
+  status: 'active' | 'blocked';
+  createdAt: Date;
+  addresses: Address[];
+}
+
+export interface Address {
+  id: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  zipCode: string;
+  isDefault: boolean;
+}
+
+// Banner Types
+export interface Banner {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl: string;
+  linkUrl?: string;
+  isActive: boolean;
+  order: number;
+  createdAt: Date;
+}
+
+// Payment Types
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  type: 'pix' | 'card' | 'cash' | 'voucher';
+  isActive: boolean;
+  icon: string;
+  maxChange?: number; // for cash payments
+}
+
+// Review Types
+export interface Review {
+  id: string;
+  clientId: string;
+  clientName: string;
+  orderId: string;
+  rating: number;
+  comment?: string;
+  response?: string;
+  isPublic: boolean;
+  createdAt: Date;
+}
+
+// Loyalty Types
+export interface LoyaltyProgram {
+  isActive: boolean;
+  pointsPerReal: number;
+  minimumRedemption: number;
+  rewards: LoyaltyReward[];
+}
+
+export interface LoyaltyReward {
+  id: string;
+  name: string;
+  pointsCost: number;
+  description: string;
+  isActive: boolean;
+}
+
+// Message Templates
+export interface MessageTemplate {
+  id: string;
+  name: string;
+  type: 'order_confirmed' | 'order_preparing' | 'order_ready' | 'order_out_for_delivery' | 'order_delivered' | 'pix_received';
+  content: string;
+  variables: string[];
+}
+
+// API Integration
+export interface ApiIntegration {
+  id: string;
+  name: string;
+  isActive: boolean;
+  environment: 'test' | 'production';
+  publicKey?: string;
+  privateKey?: string;
+  status: 'connected' | 'disconnected' | 'error';
+  lastCheck?: Date;
 }
