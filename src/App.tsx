@@ -49,6 +49,7 @@ import AdminRecaptcha from "./pages/admin/Recaptcha";
 import AdminApiConfig from "./pages/admin/ApiConfig";
 import AdminProfile from "./pages/admin/AdminProfile";
 import AdminSoundSettings from "./pages/admin/SoundSettings";
+import AdminThemes from "./pages/admin/Themes";
 // Panel Pages
 import KitchenPanel from "./pages/kitchen/KitchenPanel";
 import MotoboyPanel from "./pages/motoboy/MotoboyPanel";
@@ -108,6 +109,7 @@ const App = () => (
                         <Route path="/admin/settings" element={<SidebarProvider><AdminSettings /></SidebarProvider>} />
                         <Route path="/admin/profile" element={<SidebarProvider><AdminProfile /></SidebarProvider>} />
                         <Route path="/admin/sound-settings" element={<SidebarProvider><AdminSoundSettings /></SidebarProvider>} />
+                        <Route path="/admin/themes" element={<SidebarProvider><AdminThemes /></SidebarProvider>} />
                       </Route>
 
                       {/* Protected Kitchen Route */}

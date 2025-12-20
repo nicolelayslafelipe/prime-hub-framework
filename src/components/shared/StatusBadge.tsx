@@ -32,9 +32,9 @@ const statusConfig: Record<OrderStatus, {
   confirmed: {
     label: 'Confirmado',
     icon: CheckCircle2,
-    bgClass: 'bg-neon-blue/15 border-neon-blue/30',
-    textClass: 'text-neon-blue',
-    glowClass: 'shadow-[0_0_20px_-5px_hsl(var(--neon-blue)/0.5)]',
+    bgClass: 'bg-sapphire/15 border-sapphire/30',
+    textClass: 'text-sapphire',
+    glowClass: 'shadow-[0_0_20px_-5px_hsl(var(--sapphire)/0.5)]',
   },
   preparing: {
     label: 'Preparando',
