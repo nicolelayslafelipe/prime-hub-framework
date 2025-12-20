@@ -199,6 +199,45 @@ export type Database = {
         }
         Relationships: []
       }
+      sound_settings: {
+        Row: {
+          enabled: boolean | null
+          id: string
+          max_repeat_duration_seconds: number | null
+          min_interval_seconds: number | null
+          panel_type: string
+          repeat_enabled: boolean | null
+          repeat_interval_seconds: number | null
+          sound_type: string | null
+          updated_at: string | null
+          volume: number | null
+        }
+        Insert: {
+          enabled?: boolean | null
+          id?: string
+          max_repeat_duration_seconds?: number | null
+          min_interval_seconds?: number | null
+          panel_type: string
+          repeat_enabled?: boolean | null
+          repeat_interval_seconds?: number | null
+          sound_type?: string | null
+          updated_at?: string | null
+          volume?: number | null
+        }
+        Update: {
+          enabled?: boolean | null
+          id?: string
+          max_repeat_duration_seconds?: number | null
+          min_interval_seconds?: number | null
+          panel_type?: string
+          repeat_enabled?: boolean | null
+          repeat_interval_seconds?: number | null
+          sound_type?: string | null
+          updated_at?: string | null
+          volume?: number | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

@@ -10,6 +10,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProductProvider } from "./contexts/ProductContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
+import { SoundProvider } from "./contexts/SoundContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Pages
@@ -47,6 +48,7 @@ import AdminFirstOrderVerification from "./pages/admin/FirstOrderVerification";
 import AdminRecaptcha from "./pages/admin/Recaptcha";
 import AdminApiConfig from "./pages/admin/ApiConfig";
 import AdminProfile from "./pages/admin/AdminProfile";
+import AdminSoundSettings from "./pages/admin/SoundSettings";
 // Panel Pages
 import KitchenPanel from "./pages/kitchen/KitchenPanel";
 import MotoboyPanel from "./pages/motoboy/MotoboyPanel";
@@ -59,9 +61,10 @@ const App = () => (
       <AuthProvider>
         <ConfigProvider>
           <ProductProvider>
-            <OrderProvider>
-              <CartProvider>
-                <TooltipProvider>
+            <SoundProvider>
+              <OrderProvider>
+                <CartProvider>
+                  <TooltipProvider>
                   <Toaster />
                   <Sonner />
                   <BrowserRouter>
@@ -104,6 +107,7 @@ const App = () => (
                         <Route path="/admin/users" element={<SidebarProvider><AdminUsers /></SidebarProvider>} />
                         <Route path="/admin/settings" element={<SidebarProvider><AdminSettings /></SidebarProvider>} />
                         <Route path="/admin/profile" element={<SidebarProvider><AdminProfile /></SidebarProvider>} />
+                        <Route path="/admin/sound-settings" element={<SidebarProvider><AdminSoundSettings /></SidebarProvider>} />
                       </Route>
 
                       {/* Protected Kitchen Route */}
@@ -120,9 +124,10 @@ const App = () => (
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </BrowserRouter>
-                </TooltipProvider>
-              </CartProvider>
-            </OrderProvider>
+                  </TooltipProvider>
+                </CartProvider>
+              </OrderProvider>
+            </SoundProvider>
           </ProductProvider>
         </ConfigProvider>
       </AuthProvider>

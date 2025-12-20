@@ -35,6 +35,7 @@ import {
   UserCog,
   LogOut,
   ChevronDown,
+  Volume2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -110,6 +111,7 @@ const menuGroups: MenuGroup[] = [
     title: 'Gestão',
     items: [
       { icon: UserCog, label: 'Usuários', path: '/admin/users' },
+      { icon: Volume2, label: 'Sons', path: '/admin/sound-settings' },
       { icon: Users, label: 'Minha Conta', path: '/admin/profile' },
     ],
   },
