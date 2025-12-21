@@ -293,6 +293,7 @@ export type Database = {
           show_banner: boolean | null
           total_reviews: number | null
           updated_at: string | null
+          use_banner_as_login_bg: boolean | null
           whatsapp: string | null
         }
         Insert: {
@@ -324,6 +325,7 @@ export type Database = {
           show_banner?: boolean | null
           total_reviews?: number | null
           updated_at?: string | null
+          use_banner_as_login_bg?: boolean | null
           whatsapp?: string | null
         }
         Update: {
@@ -355,6 +357,7 @@ export type Database = {
           show_banner?: boolean | null
           total_reviews?: number | null
           updated_at?: string | null
+          use_banner_as_login_bg?: boolean | null
           whatsapp?: string | null
         }
         Relationships: []

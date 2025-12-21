@@ -98,6 +98,8 @@ export interface EstablishmentSettings {
   // Rating
   averageRating?: number;
   totalReviews?: number;
+  // Login background
+  useBannerAsLoginBg?: boolean;
 }
 
 export interface ThemeSettings {

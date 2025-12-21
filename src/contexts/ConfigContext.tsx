@@ -126,6 +126,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             // Rating
             averageRating: data.average_rating ?? 5.0,
             totalReviews: data.total_reviews ?? 0,
+            // Login background
+            useBannerAsLoginBg: data.use_banner_as_login_bg ?? true,
           },
         }));
       }
@@ -201,6 +203,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       // Rating
       if (settings.averageRating !== undefined) updateData.average_rating = settings.averageRating;
       if (settings.totalReviews !== undefined) updateData.total_reviews = settings.totalReviews;
+      // Login background
+      if (settings.useBannerAsLoginBg !== undefined) updateData.use_banner_as_login_bg = settings.useBannerAsLoginBg;
 
       if (Object.keys(updateData).length > 0) {
         const { error: updateError } = await supabase
