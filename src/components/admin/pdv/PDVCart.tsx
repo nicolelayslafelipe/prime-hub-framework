@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Minus, Plus, Trash2, ShoppingCart, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 interface PDVCartProps {
   onCheckout: () => void;
@@ -12,8 +12,9 @@ interface PDVCartProps {
 }
 
 export function PDVCart({ onCheckout, disabled }: PDVCartProps) {
-  const { items, updateQuantity, updateNotes, removeItem, clearCart, getTotal } = usePDV();
+  const { items, addItem, updateQuantity, updateNotes, removeItem, clearCart, getTotal } = usePDV();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -24,12 +25,62 @@ export function PDVCart({ onCheckout, disabled }: PDVCartProps) {
 
   const total = getTotal();
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    // Only set to false if we're leaving the drop zone entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    try {
+      const data = e.dataTransfer.getData('application/json');
+      if (data) {
+        const product = JSON.parse(data);
+        addItem({
+          productId: product.productId,
+          productName: product.productName,
+          price: product.price,
+          image: product.image,
+        });
+      }
+    } catch (err) {
+      console.error('Error parsing dropped item:', err);
+    }
+  }, [addItem]);
+
   return (
-    <div className="h-full flex flex-col bg-card border-l border-border">
+    <div 
+      className={cn(
+        "h-full flex flex-col bg-card border-l border-border transition-all duration-200",
+        isDragOver && "ring-2 ring-primary ring-inset bg-primary/5"
+      )}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Header */}
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5 text-primary" />
+          <ShoppingCart className={cn(
+            "h-5 w-5 transition-colors",
+            isDragOver ? "text-primary animate-pulse" : "text-primary"
+          )} />
           <h3 className="font-semibold">Comanda</h3>
           <span className="text-sm text-muted-foreground">({items.length} itens)</span>
         </div>
@@ -45,14 +96,22 @@ export function PDVCart({ onCheckout, disabled }: PDVCartProps) {
         )}
       </div>
 
+      {/* Drop zone indicator */}
+      {isDragOver && (
+        <div className="mx-3 mt-3 p-4 border-2 border-dashed border-primary rounded-lg bg-primary/10 text-center">
+          <Plus className="h-6 w-6 mx-auto mb-1 text-primary" />
+          <p className="text-sm font-medium text-primary">Solte para adicionar</p>
+        </div>
+      )}
+
       {/* Items */}
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-2">
-          {items.length === 0 ? (
+          {items.length === 0 && !isDragOver ? (
             <div className="text-center py-8 text-muted-foreground">
               <ShoppingCart className="h-12 w-12 mx-auto mb-3 opacity-20" />
               <p className="text-sm">Comanda vazia</p>
-              <p className="text-xs">Clique nos produtos para adicionar</p>
+              <p className="text-xs">Clique ou arraste produtos para adicionar</p>
             </div>
           ) : (
             items.map((item) => (

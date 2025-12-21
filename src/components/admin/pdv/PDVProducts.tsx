@@ -74,14 +74,26 @@ export function PDVProducts({ selectedCategory }: PDVProductsProps) {
                 key={product.id}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleAddItem(product)}
+                draggable
+                onDragStart={(e) => {
+                  const dragEvent = e as unknown as React.DragEvent;
+                  dragEvent.dataTransfer.setData('application/json', JSON.stringify({
+                    productId: product.id,
+                    productName: product.name,
+                    price: product.price,
+                    image: product.image || undefined,
+                  }));
+                  dragEvent.dataTransfer.effectAllowed = 'copy';
+                }}
                 className={cn(
                   'relative flex flex-col items-center p-3 rounded-xl border-2 border-border',
                   'bg-card hover:bg-secondary/50 hover:border-primary/50',
-                  'transition-all duration-200 text-left group'
+                  'transition-all duration-200 text-left group cursor-grab active:cursor-grabbing',
+                  'active:opacity-70 active:scale-95'
                 )}
               >
                 {/* Image or Emoji */}
-                <div className="w-16 h-16 rounded-lg overflow-hidden bg-secondary flex items-center justify-center mb-2">
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-secondary flex items-center justify-center mb-2 pointer-events-none">
                   {product.image?.startsWith('http') || product.image?.startsWith('/') ? (
                     <img
                       src={product.image}
@@ -94,17 +106,17 @@ export function PDVProducts({ selectedCategory }: PDVProductsProps) {
                 </div>
 
                 {/* Name */}
-                <h4 className="text-sm font-medium text-center line-clamp-2 mb-1 min-h-[40px]">
+                <h4 className="text-sm font-medium text-center line-clamp-2 mb-1 min-h-[40px] pointer-events-none">
                   {product.name}
                 </h4>
 
                 {/* Price */}
-                <span className="text-sm font-bold text-primary">
+                <span className="text-sm font-bold text-primary pointer-events-none">
                   {formatPrice(product.price)}
                 </span>
 
                 {/* Add indicator */}
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                   <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
                     <Plus className="h-4 w-4 text-primary-foreground" />
                   </div>
@@ -112,7 +124,7 @@ export function PDVProducts({ selectedCategory }: PDVProductsProps) {
 
                 {/* Tag */}
                 {product.tag && (
-                  <span className="absolute top-2 left-2 px-1.5 py-0.5 text-[10px] font-semibold bg-accent text-accent-foreground rounded">
+                  <span className="absolute top-2 left-2 px-1.5 py-0.5 text-[10px] font-semibold bg-accent text-accent-foreground rounded pointer-events-none">
                     {product.tag}
                   </span>
                 )}
