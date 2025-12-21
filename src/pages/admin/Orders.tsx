@@ -6,6 +6,7 @@ import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
 import { SoundIndicator } from '@/components/shared/SoundIndicator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderStatus } from '@/types';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 const columns: { status: OrderStatus; title: string }[] = [
   { status: 'pending', title: 'Pendentes' },
@@ -40,13 +41,43 @@ function ColumnSkeleton() {
 export default function AdminOrders() {
   const { orders, updateOrderStatus, getOrdersByStatus, isLoading, connectionStatus } = useOrders();
   const { adminSettings, isPlayingAdmin } = useSound();
+  
+  // Track recently moved orders for animation
+  const [recentlyMovedOrders, setRecentlyMovedOrders] = useState<Set<string>>(new Set());
+  const previousOrderStatusRef = useRef<Map<string, OrderStatus>>(new Map());
 
-  const handleUpdateStatus = async (orderId: string) => {
+  // Detect status changes and mark orders as recently moved
+  useEffect(() => {
+    const newRecentlyMoved = new Set<string>();
+    
+    orders.forEach((order) => {
+      const previousStatus = previousOrderStatusRef.current.get(order.id);
+      if (previousStatus && previousStatus !== order.status) {
+        newRecentlyMoved.add(order.id);
+      }
+      previousOrderStatusRef.current.set(order.id, order.status);
+    });
+    
+    if (newRecentlyMoved.size > 0) {
+      setRecentlyMovedOrders((prev) => new Set([...prev, ...newRecentlyMoved]));
+      
+      // Clear the animation after 2.5 seconds
+      setTimeout(() => {
+        setRecentlyMovedOrders((prev) => {
+          const updated = new Set(prev);
+          newRecentlyMoved.forEach((id) => updated.delete(id));
+          return updated;
+        });
+      }, 2500);
+    }
+  }, [orders]);
+
+  const handleUpdateStatus = useCallback(async (orderId: string) => {
     const order = orders.find((o) => o.id === orderId);
     if (order && statusFlow[order.status]) {
       await updateOrderStatus(orderId, statusFlow[order.status]!);
     }
-  };
+  }, [orders, updateOrderStatus]);
 
   return (
     <AdminLayout 
@@ -80,6 +111,7 @@ export default function AdminOrders() {
               title={column.title}
               orders={getOrdersByStatus(column.status)}
               onUpdateStatus={handleUpdateStatus}
+              recentlyMovedOrders={recentlyMovedOrders}
             />
           ))
         )}

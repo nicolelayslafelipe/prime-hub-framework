@@ -8,6 +8,7 @@ interface OrderColumnProps {
   title: string;
   orders: Order[];
   onUpdateStatus: (orderId: string) => void;
+  recentlyMovedOrders?: Set<string>;
 }
 
 const headerColors: Record<string, string> = {
@@ -24,7 +25,13 @@ const headerIcons: Record<string, string> = {
   out_for_delivery: '🛵',
 };
 
-export function OrderColumn({ status, title, orders, onUpdateStatus }: OrderColumnProps) {
+export function OrderColumn({ 
+  status, 
+  title, 
+  orders, 
+  onUpdateStatus,
+  recentlyMovedOrders = new Set()
+}: OrderColumnProps) {
   const bgColorClass = headerColors[status] || 'bg-muted';
 
   return (
@@ -50,6 +57,7 @@ export function OrderColumn({ status, title, orders, onUpdateStatus }: OrderColu
               key={order.id}
               order={order}
               onUpdateStatus={onUpdateStatus}
+              isNew={recentlyMovedOrders.has(order.id)}
             />
           ))
         ) : (
