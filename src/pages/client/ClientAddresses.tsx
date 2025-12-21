@@ -103,9 +103,10 @@ export default function ClientAddresses() {
 
   const watchedCep = form.watch('zip_code');
 
-  // Auto-search CEP when valid
+  // Auto-search CEP when valid - fills city, state, and neighborhood (if available)
   const handleCepSearch = useCallback(async (cep: string) => {
-    if (!isValidCep(cep)) {
+    const cleanCep = formatCep(cep);
+    if (cleanCep.length !== 8) {
       setCepFound(false);
       return;
     }
@@ -114,60 +115,56 @@ export default function ClientAddresses() {
     setCepFound(false);
 
     try {
-      const addressData = await fetchAddressByCep(cep);
+      const addressData = await fetchAddressByCep(cleanCep);
       
       if (addressData) {
-        // Update fields with whatever data we received (keep existing values for partial CEPs)
+        // Always set city and state
+        form.setValue('city', addressData.city, { shouldValidate: true });
+        form.setValue('state', addressData.state, { shouldValidate: true });
+        
+        // Only set street/neighborhood if available from API
         if (addressData.street) {
           form.setValue('street', addressData.street, { shouldValidate: true });
         }
         if (addressData.neighborhood) {
           form.setValue('neighborhood', addressData.neighborhood, { shouldValidate: true });
         }
-        form.setValue('city', addressData.city, { shouldValidate: true });
-        form.setValue('state', addressData.state, { shouldValidate: true });
+        
         setCepFound(true);
         
         if (addressData.isPartial) {
-          // Generic city CEP - user needs to fill street and neighborhood
-          toast.info('CEP de cidade encontrado', {
-            description: 'Preencha a rua e o bairro manualmente',
+          toast.info('CEP encontrado', {
+            description: `${addressData.city} - ${addressData.state}. Preencha rua e bairro.`,
           });
-          // Focus on street field for partial CEPs
           setTimeout(() => {
             document.getElementById('street')?.focus();
           }, 100);
         } else {
           toast.success('Endereço encontrado!');
-          // Focus on number field for complete CEPs
           setTimeout(() => {
             document.getElementById('number')?.focus();
           }, 100);
         }
       } else {
-        toast.error('CEP não encontrado', {
-          description: 'Verifique o CEP digitado',
-        });
+        toast.error('CEP não encontrado');
+        setCepFound(false);
       }
-    } catch {
+    } catch (err) {
+      console.error('CEP search error:', err);
       toast.error('Erro ao buscar CEP');
+      setCepFound(false);
     } finally {
       setIsSearchingCep(false);
     }
   }, [form]);
 
-  // Debounced CEP search
+  // Trigger CEP search when 8 digits are entered
   useEffect(() => {
     const cleanCep = formatCep(watchedCep || '');
-    if (cleanCep.length === 8) {
-      const timer = setTimeout(() => {
-        handleCepSearch(cleanCep);
-      }, 500);
-      return () => clearTimeout(timer);
-    } else {
-      setCepFound(false);
+    if (cleanCep.length === 8 && !cepFound && !isSearchingCep) {
+      handleCepSearch(cleanCep);
     }
-  }, [watchedCep, handleCepSearch]);
+  }, [watchedCep, cepFound, isSearchingCep, handleCepSearch]);
 
   useEffect(() => {
     if (user) {
