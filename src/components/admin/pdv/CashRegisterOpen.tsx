@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, DollarSign } from 'lucide-react';
+import { Loader2, DollarSign, ArrowLeft } from 'lucide-react';
 
 interface CashRegisterOpenProps {
   open: boolean;
@@ -13,6 +14,7 @@ interface CashRegisterOpenProps {
 export function CashRegisterOpen({ open, onOpenRegister }: CashRegisterOpenProps) {
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,9 +28,18 @@ export function CashRegisterOpen({ open, onOpenRegister }: CashRegisterOpenProps
     setIsLoading(false);
   };
 
+  const handleBack = () => {
+    navigate('/admin/dashboard');
+  };
+
   return (
     <Dialog open={open}>
-      <DialogContent className="max-w-sm" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent 
+        className="max-w-sm" 
+        hideCloseButton
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />
@@ -57,16 +68,27 @@ export function CashRegisterOpen({ open, onOpenRegister }: CashRegisterOpenProps
             </p>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Abrindo...
-              </>
-            ) : (
-              'Abrir Caixa'
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleBack}
+              className="flex-1"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+            <Button type="submit" className="flex-1" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Abrindo...
+                </>
+              ) : (
+                'Abrir Caixa'
+              )}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
