@@ -105,9 +105,12 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
         return acc;
       }, {} as Record<string, OrderItem[]>);
 
-      const mappedOrders = (ordersData || []).map((order) =>
-        mapDbOrderToOrder(order as DbOrder, itemsByOrderId[order.id] || [])
-      );
+      // Filter out orders waiting for payment - they shouldn't appear in admin/kitchen panels
+      const mappedOrders = (ordersData || [])
+        .filter((order) => order.status !== 'waiting_payment')
+        .map((order) =>
+          mapDbOrderToOrder(order as DbOrder, itemsByOrderId[order.id] || [])
+        );
 
       setOrders(mappedOrders);
       setError(null);
@@ -127,6 +130,12 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
       if (payload.eventType === 'INSERT') {
         const newOrder = payload.new as DbOrder;
         
+        // Don't add orders waiting for payment to the list
+        if (newOrder.status === 'waiting_payment') {
+          console.log('Order waiting for payment, skipping:', newOrder.order_number);
+          return;
+        }
+        
         // Fetch items for the new order
         const { data: itemsData } = await supabase
           .from('order_items')
@@ -142,6 +151,31 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
         onNewOrder?.(mappedOrder);
       } else if (payload.eventType === 'UPDATE') {
         const updatedOrder = payload.new as DbOrder;
+        const oldOrder = payload.old as DbOrder;
+
+        // If order was waiting_payment and now has a different status, add it to the list
+        if (oldOrder.status === 'waiting_payment' && updatedOrder.status !== 'waiting_payment') {
+          // Fetch items for the order
+          const { data: itemsData } = await supabase
+            .from('order_items')
+            .select('*')
+            .eq('order_id', updatedOrder.id);
+
+          const items = (itemsData || []).map((item) => mapDbItemToOrderItem(item as DbOrderItem));
+          const mappedOrder = mapDbOrderToOrder(updatedOrder, items);
+
+          setOrders((prev) => [mappedOrder, ...prev]);
+          
+          // Call onNewOrder callback since this is effectively a new order for admin
+          onNewOrder?.(mappedOrder);
+          return;
+        }
+
+        // If order is now waiting_payment (shouldn't happen but handle it), remove from list
+        if (updatedOrder.status === 'waiting_payment') {
+          setOrders((prev) => prev.filter((order) => order.id !== updatedOrder.id));
+          return;
+        }
 
         setOrders((prev) =>
           prev.map((order) => {

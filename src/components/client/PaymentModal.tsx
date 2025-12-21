@@ -32,7 +32,8 @@ export function PaymentModal({
   onPaymentApproved,
 }: PaymentModalProps) {
   const { paymentData, isApproved, isRejected } = usePaymentStatus(orderId);
-  const [countdown, setCountdown] = useState(30 * 60); // 30 minutes in seconds
+  const [countdown, setCountdown] = useState(5 * 60); // 5 minutes in seconds
+  const [isExpired, setIsExpired] = useState(false);
 
   // Handle payment approval
   useEffect(() => {
@@ -41,12 +42,23 @@ export function PaymentModal({
     }
   }, [isApproved, onPaymentApproved]);
 
+  // Handle PIX expiration
+  useEffect(() => {
+    if (countdown === 0 && paymentType === 'pix' && !isApproved && !isRejected && !isExpired) {
+      setIsExpired(true);
+      toast.error('PIX expirado', { 
+        description: 'O tempo para pagamento acabou. Faça um novo pedido.' 
+      });
+    }
+  }, [countdown, paymentType, isApproved, isRejected, isExpired]);
+
   // Countdown timer for PIX
   useEffect(() => {
     if (!isOpen || paymentType !== 'pix' || isApproved || isRejected) return;
 
-    // Reset countdown when modal opens
-    setCountdown(30 * 60);
+    // Reset countdown and expired state when modal opens
+    setCountdown(5 * 60);
+    setIsExpired(false);
 
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -103,7 +115,7 @@ export function PaymentModal({
     );
   }
 
-  if (isRejected) {
+  if (isRejected || isExpired) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md">
@@ -112,13 +124,15 @@ export function PaymentModal({
               <XCircle className="h-12 w-12 text-destructive" />
             </div>
             <DialogTitle className="text-2xl font-bold text-center">
-              Pagamento Recusado
+              {isExpired ? 'PIX Expirado' : 'Pagamento Recusado'}
             </DialogTitle>
             <p className="text-muted-foreground text-center">
-              Houve um problema com seu pagamento. Tente novamente ou escolha outra forma de pagamento.
+              {isExpired 
+                ? 'O tempo para pagamento expirou. Por favor, faça um novo pedido.' 
+                : 'Houve um problema com seu pagamento. Tente novamente ou escolha outra forma de pagamento.'}
             </p>
             <Button onClick={onClose} variant="outline" className="w-full" size="lg">
-              Tentar Novamente
+              {isExpired ? 'Fechar' : 'Tentar Novamente'}
             </Button>
           </div>
         </DialogContent>
