@@ -250,7 +250,7 @@ export default function ClientPanel() {
                   />
                 </div>
               ) : (
-                <div className="h-20 w-20 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-accent flex items-center justify-center shadow-glow-gold relative overflow-hidden">
+                <div className={`h-20 w-20 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-accent flex items-center justify-center shadow-glow-gold relative overflow-hidden ${config.establishment.isOpen ? 'animate-pulse' : ''}`}>
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.2),transparent_50%)]" />
                   <Store className="h-10 w-10 text-primary-foreground drop-shadow-md relative z-10" />
                 </div>
