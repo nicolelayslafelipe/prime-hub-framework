@@ -16,6 +16,7 @@ export interface User {
 
 export type OrderStatus = 
   | 'pending' 
+  | 'waiting_payment'
   | 'confirmed' 
   | 'preparing' 
   | 'ready' 

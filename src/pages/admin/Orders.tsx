@@ -23,6 +23,7 @@ const statusColors: Record<string, string> = {
 };
 
 const statusFlow: Record<OrderStatus, OrderStatus | null> = {
+  waiting_payment: 'pending',
   pending: 'preparing',
   confirmed: 'preparing',
   preparing: 'ready',

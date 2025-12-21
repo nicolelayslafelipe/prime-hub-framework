@@ -11,9 +11,14 @@ import {
   Truck, 
   CheckCircle2,
   MapPin,
-  Wifi
+  Wifi,
+  CreditCard,
+  Copy,
+  QrCode,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface OrderTrackingProps {
   isOpen: boolean;
@@ -21,7 +26,14 @@ interface OrderTrackingProps {
   order: Order | null;
 }
 
+interface PaymentData {
+  mp_qr_code: string | null;
+  mp_qr_code_base64: string | null;
+  payment_status: string | null;
+}
+
 const statusSteps: { status: OrderStatus; label: string; icon: React.ElementType }[] = [
+  { status: 'waiting_payment', label: 'Aguardando Pagamento', icon: CreditCard },
   { status: 'pending', label: 'Pedido Recebido', icon: Clock },
   { status: 'confirmed', label: 'Confirmado', icon: CheckCircle2 },
   { status: 'preparing', label: 'Preparando', icon: ChefHat },
@@ -31,23 +43,51 @@ const statusSteps: { status: OrderStatus; label: string; icon: React.ElementType
 ];
 
 const statusIndex: Record<OrderStatus, number> = {
-  pending: 0,
-  confirmed: 1,
-  preparing: 2,
-  ready: 3,
-  out_for_delivery: 4,
-  delivered: 5,
+  waiting_payment: 0,
+  pending: 1,
+  confirmed: 2,
+  preparing: 3,
+  ready: 4,
+  out_for_delivery: 5,
+  delivered: 6,
   cancelled: -1,
 };
 
 export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTrackingProps) {
   const [order, setOrder] = useState<Order | null>(initialOrder);
   const [isConnected, setIsConnected] = useState(false);
+  const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
 
   // Update local order when prop changes
   useEffect(() => {
     setOrder(initialOrder);
   }, [initialOrder]);
+
+  // Fetch payment data for waiting_payment orders
+  useEffect(() => {
+    if (!initialOrder?.id || initialOrder.status !== 'waiting_payment') {
+      setPaymentData(null);
+      return;
+    }
+
+    const fetchPaymentData = async () => {
+      const { data } = await supabase
+        .from('orders')
+        .select('mp_qr_code, payment_status')
+        .eq('id', initialOrder.id)
+        .single();
+      
+      if (data) {
+        setPaymentData({
+          mp_qr_code: data.mp_qr_code,
+          mp_qr_code_base64: null, // We don't store base64, just the code
+          payment_status: data.payment_status,
+        });
+      }
+    };
+
+    fetchPaymentData();
+  }, [initialOrder?.id, initialOrder?.status]);
 
   // Subscribe to realtime updates for this specific order
   useEffect(() => {
@@ -68,6 +108,8 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
           const updatedOrder = payload.new as {
             id: string;
             status: string;
+            payment_status: string | null;
+            mp_qr_code: string | null;
             updated_at: string;
           };
           
@@ -80,6 +122,24 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
                 }
               : null
           );
+
+          // Update payment data
+          if (updatedOrder.status === 'waiting_payment') {
+            setPaymentData({
+              mp_qr_code: updatedOrder.mp_qr_code,
+              mp_qr_code_base64: null,
+              payment_status: updatedOrder.payment_status,
+            });
+          } else {
+            setPaymentData(null);
+          }
+
+          // Show toast when payment is approved
+          if (updatedOrder.payment_status === 'approved') {
+            toast.success('Pagamento aprovado!', {
+              description: 'Seu pedido está sendo preparado.',
+            });
+          }
         }
       )
       .subscribe((status) => {
@@ -91,10 +151,27 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
     };
   }, [isOpen, initialOrder?.id]);
 
+  const handleCopyPixCode = () => {
+    if (paymentData?.mp_qr_code) {
+      navigator.clipboard.writeText(paymentData.mp_qr_code);
+      toast.success('Código PIX copiado!');
+    }
+  };
+
   if (!order) return null;
 
   const currentStepIndex = statusIndex[order.status];
   const isCancelled = order.status === 'cancelled';
+  const isWaitingPayment = order.status === 'waiting_payment';
+
+  // Filter steps based on whether it's a payment order
+  const displaySteps = isWaitingPayment || order.paymentMethod?.includes('Online')
+    ? statusSteps
+    : statusSteps.filter(s => s.status !== 'waiting_payment');
+
+  const adjustedStepIndex = isWaitingPayment || order.paymentMethod?.includes('Online')
+    ? currentStepIndex
+    : currentStepIndex - 1;
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -130,17 +207,66 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
             </div>
           ) : (
             <>
+              {/* Payment Section for waiting_payment */}
+              {isWaitingPayment && paymentData?.mp_qr_code && (
+                <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-4">
+                  <div className="flex items-center gap-2 text-amber-500">
+                    <CreditCard className="h-5 w-5" />
+                    <span className="font-semibold">Pagamento Pendente</span>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-primary mb-2">
+                      R$ {order.total.toFixed(2)}
+                    </p>
+                  </div>
+
+                  {/* QR Code placeholder - show code to copy */}
+                  <div className="flex justify-center">
+                    <div className="p-4 bg-muted rounded-lg flex flex-col items-center gap-2">
+                      <QrCode className="h-12 w-12 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Use o código abaixo</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground text-center font-medium">
+                      Código PIX Copia e Cola:
+                    </p>
+                    <div className="flex gap-2">
+                      <code className="flex-1 p-2 bg-muted rounded text-xs break-all max-h-16 overflow-y-auto font-mono">
+                        {paymentData.mp_qr_code}
+                      </code>
+                      <Button 
+                        size="icon" 
+                        variant="secondary" 
+                        onClick={handleCopyPixCode}
+                        className="shrink-0"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 p-3 bg-primary/10 rounded-lg">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-sm font-medium text-primary">Aguardando pagamento...</span>
+                  </div>
+                </div>
+              )}
+
               {/* Progress Steps */}
               <div className="relative">
-                {statusSteps.map((step, index) => {
-                  const isCompleted = index <= currentStepIndex;
-                  const isCurrent = index === currentStepIndex;
+                {displaySteps.map((step, index) => {
+                  const stepIndexValue = statusIndex[step.status];
+                  const isCompleted = stepIndexValue <= currentStepIndex;
+                  const isCurrent = stepIndexValue === currentStepIndex;
                   const Icon = step.icon;
 
                   return (
                     <div key={step.status} className="flex gap-4 pb-8 last:pb-0">
                       {/* Line */}
-                      {index < statusSteps.length - 1 && (
+                      {index < displaySteps.length - 1 && (
                         <div 
                           className={cn(
                             "absolute left-5 w-0.5 h-8 translate-y-10 transition-colors duration-500",

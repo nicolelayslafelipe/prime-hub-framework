@@ -6,7 +6,8 @@ import {
   CheckCircle2, 
   Truck, 
   Package, 
-  XCircle 
+  XCircle,
+  CreditCard
 } from 'lucide-react';
 
 interface StatusBadgeProps {
@@ -21,6 +22,7 @@ const statusConfig: Record<OrderStatus, {
   bgClass: string;
   textClass: string;
   glowClass: string;
+  animate?: boolean;
 }> = {
   pending: {
     label: 'Pendente',
@@ -28,6 +30,14 @@ const statusConfig: Record<OrderStatus, {
     bgClass: 'bg-status-pending/15 border-status-pending/30',
     textClass: 'text-status-pending',
     glowClass: 'shadow-[0_0_20px_-5px_hsl(var(--status-pending)/0.5)]',
+  },
+  waiting_payment: {
+    label: 'Aguardando PIX',
+    icon: CreditCard,
+    bgClass: 'bg-amber-500/15 border-amber-500/30',
+    textClass: 'text-amber-500',
+    glowClass: 'shadow-[0_0_20px_-5px_hsl(45,93%,47%,0.5)]',
+    animate: true,
   },
   confirmed: {
     label: 'Confirmado',
@@ -96,7 +106,8 @@ export function StatusBadge({ status, size = 'md', showIcon = true }: StatusBadg
         config.bgClass,
         config.textClass,
         config.glowClass,
-        sizeClasses[size]
+        sizeClasses[size],
+        config.animate && 'animate-pulse'
       )}
     >
       {showIcon && <Icon className={iconSizes[size]} />}
