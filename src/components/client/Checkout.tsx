@@ -408,30 +408,30 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                 ) : addresses.length > 0 ? (
                   <div className="space-y-3">
                     {/* Saved addresses */}
-                    <RadioGroup 
-                      value={showNewAddressForm ? 'new' : (selectedAddressId || '')} 
-                      onValueChange={(value) => {
-                        if (value === 'new') {
-                          setShowNewAddressForm(true);
-                          setSelectedAddressId(null);
-                        } else {
-                          setShowNewAddressForm(false);
-                          setSelectedAddressId(value);
-                        }
-                        setAddressErrors([]);
-                      }}
-                      className="space-y-2"
-                    >
+                    <div className="space-y-2">
                       {addresses.map((addr) => (
-                        <label
+                        <div
                           key={addr.id}
+                          onClick={() => {
+                            setShowNewAddressForm(false);
+                            setSelectedAddressId(addr.id);
+                            setAddressErrors([]);
+                          }}
                           className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                             selectedAddressId === addr.id && !showNewAddressForm
                               ? 'border-primary bg-primary/5' 
                               : 'border-border bg-secondary/30 hover:bg-secondary/50'
                           }`}
                         >
-                          <RadioGroupItem value={addr.id} className="mt-1" />
+                          <div className={`h-4 w-4 rounded-full border-2 mt-1 flex items-center justify-center ${
+                            selectedAddressId === addr.id && !showNewAddressForm
+                              ? 'border-primary'
+                              : 'border-muted-foreground'
+                          }`}>
+                            {selectedAddressId === addr.id && !showNewAddressForm && (
+                              <div className="h-2 w-2 rounded-full bg-primary" />
+                            )}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               {labelIcons[addr.label] || <MapPin className="h-4 w-4" />}
@@ -447,7 +447,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                               {formatAddressForDisplay(addr)}
                             </p>
                           </div>
-                        </label>
+                        </div>
                       ))}
                       
                       {/* New address option */}
@@ -463,11 +463,19 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                             : 'border-border bg-secondary/30 hover:bg-secondary/50'
                         }`}
                       >
-                        <RadioGroupItem value="new" checked={showNewAddressForm} />
+                        <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                          showNewAddressForm
+                            ? 'border-primary'
+                            : 'border-muted-foreground'
+                        }`}>
+                          {showNewAddressForm && (
+                            <div className="h-2 w-2 rounded-full bg-primary" />
+                          )}
+                        </div>
                         <Plus className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-medium">Entregar em outro endereço</span>
                       </div>
-                    </RadioGroup>
+                    </div>
                   </div>
                 ) : null}
 
