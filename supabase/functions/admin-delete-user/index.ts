@@ -16,7 +16,7 @@ serve(async (req) => {
     // Get the authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('Missing authorization header');
+      throw new Error('Cabeçalho de autorização ausente');
     }
 
     // Create Supabase client with the user's token to verify they're an admin
@@ -31,7 +31,7 @@ serve(async (req) => {
     // Get the current user
     const { data: { user: currentUser }, error: userError } = await userClient.auth.getUser();
     if (userError || !currentUser) {
-      throw new Error('Unauthorized: Invalid token');
+      throw new Error('Não autorizado: Token inválido');
     }
 
     // Check if the current user is an admin
@@ -41,7 +41,7 @@ serve(async (req) => {
     });
 
     if (roleError || !isAdmin) {
-      throw new Error('Forbidden: Only admins can delete users');
+      throw new Error('Proibido: Apenas administradores podem excluir usuários');
     }
 
     // Parse request body
@@ -49,12 +49,12 @@ serve(async (req) => {
 
     // Validate required fields
     if (!userId) {
-      throw new Error('Missing required field: userId');
+      throw new Error('Campo obrigatório ausente: userId');
     }
 
     // Prevent self-deletion
     if (userId === currentUser.id) {
-      throw new Error('Cannot delete your own account');
+      throw new Error('Não é possível excluir sua própria conta');
     }
 
     // Create admin client with service role key
@@ -65,30 +65,76 @@ serve(async (req) => {
       },
     });
 
-    // Check if target user is an admin (prevent admin deletion)
+    // Check if target user is an admin
     const { data: targetIsAdmin } = await adminClient.rpc('has_role', {
       _user_id: userId,
       _role: 'admin',
     });
 
     if (targetIsAdmin) {
-      throw new Error('Cannot delete admin users');
+      // Count total admins to prevent deleting the last one
+      const { count: adminCount } = await adminClient
+        .from('user_roles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'admin');
+
+      console.log(`Admin count: ${adminCount}`);
+
+      if (adminCount && adminCount <= 1) {
+        throw new Error('Não é possível excluir o último administrador do sistema');
+      }
     }
 
-    // Delete the user (this will cascade to profiles and user_roles)
+    // Check if user has order history
+    const { count: ordersCount } = await adminClient
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('customer_id', userId);
+
+    console.log(`User ${userId} has ${ordersCount} orders`);
+
+    if (ordersCount && ordersCount > 0) {
+      // Soft delete: just deactivate the user
+      const { error: updateError } = await adminClient
+        .from('profiles')
+        .update({ is_active: false })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error('Error soft deleting user:', updateError);
+        throw new Error(`Erro ao desativar usuário: ${updateError.message}`);
+      }
+
+      console.log(`User soft deleted (deactivated): ${userId}`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          softDeleted: true,
+          message: 'Usuário desativado com sucesso (possui histórico de pedidos)',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
+    // Hard delete: no order history
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
 
     if (deleteError) {
       console.error('Error deleting user:', deleteError);
-      throw new Error(`Failed to delete user: ${deleteError.message}`);
+      throw new Error(`Erro ao excluir usuário: ${deleteError.message}`);
     }
 
-    console.log(`User deleted successfully: ${userId}`);
+    console.log(`User hard deleted: ${userId}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'User deleted successfully',
+        softDeleted: false,
+        message: 'Usuário excluído com sucesso',
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -97,7 +143,7 @@ serve(async (req) => {
     );
   } catch (err) {
     console.error('Error in admin-delete-user:', err);
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
     return new Response(
       JSON.stringify({
         success: false,
@@ -105,8 +151,8 @@ serve(async (req) => {
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: errorMessage.includes('Forbidden') ? 403 : 
-               errorMessage.includes('Unauthorized') ? 401 : 400,
+        status: errorMessage.includes('Proibido') ? 403 : 
+               errorMessage.includes('Não autorizado') ? 401 : 400,
       }
     );
   }

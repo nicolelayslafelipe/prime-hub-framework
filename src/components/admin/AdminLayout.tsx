@@ -1,10 +1,10 @@
 import { ReactNode } from 'react';
 import { AdminSidebar } from './AdminSidebar';
-import { Bell, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { NotificationDropdown } from './NotificationDropdown';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -45,10 +45,7 @@ export function AdminLayout({ children, title, subtitle, headerRight }: AdminLay
                   className="w-64 pl-9 bg-secondary border-border focus:border-primary/50"
                 />
               </div>
-              <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-                <Bell className="h-5 w-5" />
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />
-              </Button>
+              <NotificationDropdown />
             </div>
           </div>
         </header>

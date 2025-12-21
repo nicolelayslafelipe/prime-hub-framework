@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,8 +15,9 @@ interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description: string;
+  description: ReactNode;
   confirmLabel?: string;
+  confirmText?: ReactNode;
   cancelLabel?: string;
   variant?: 'default' | 'destructive';
   onConfirm: () => void;
@@ -27,6 +29,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = 'Confirmar',
+  confirmText,
   cancelLabel = 'Cancelar',
   variant = 'default',
   onConfirm,
@@ -36,7 +39,9 @@ export function ConfirmDialog({
       <AlertDialogContent className="bg-card border-border">
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+          <AlertDialogDescription asChild>
+            <div>{description}</div>
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel className="bg-muted hover:bg-muted/80">
@@ -48,7 +53,7 @@ export function ConfirmDialog({
             )}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {confirmText || confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
