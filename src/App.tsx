@@ -46,9 +46,6 @@ import AdminSystem from "./pages/admin/System";
 import AdminBusinessHours from "./pages/admin/BusinessHours";
 import AdminDeliveryConfig from "./pages/admin/DeliveryConfig";
 import AdminEditableMessages from "./pages/admin/EditableMessages";
-import AdminFirstOrderVerification from "./pages/admin/FirstOrderVerification";
-import AdminRecaptcha from "./pages/admin/Recaptcha";
-import AdminApiConfig from "./pages/admin/ApiConfig";
 import AdminProfile from "./pages/admin/AdminProfile";
 import AdminSoundSettings from "./pages/admin/SoundSettings";
 import AdminThemes from "./pages/admin/Themes";
@@ -106,9 +103,6 @@ const App = () => (
                           <Route path="/admin/hours" element={<SidebarProvider><AdminBusinessHours /></SidebarProvider>} />
                           <Route path="/admin/delivery-config" element={<SidebarProvider><AdminDeliveryConfig /></SidebarProvider>} />
                           <Route path="/admin/messages" element={<SidebarProvider><AdminEditableMessages /></SidebarProvider>} />
-                          <Route path="/admin/verification" element={<SidebarProvider><AdminFirstOrderVerification /></SidebarProvider>} />
-                          <Route path="/admin/recaptcha" element={<SidebarProvider><AdminRecaptcha /></SidebarProvider>} />
-                          <Route path="/admin/api-config" element={<SidebarProvider><AdminApiConfig /></SidebarProvider>} />
                           <Route path="/admin/users" element={<SidebarProvider><AdminUsers /></SidebarProvider>} />
                           <Route path="/admin/settings" element={<SidebarProvider><AdminSettings /></SidebarProvider>} />
                           <Route path="/admin/profile" element={<SidebarProvider><AdminProfile /></SidebarProvider>} />

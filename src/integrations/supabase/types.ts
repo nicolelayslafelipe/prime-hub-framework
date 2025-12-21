@@ -265,12 +265,14 @@ export type Database = {
       }
       establishment_settings: {
         Row: {
+          accent_color: string | null
           address: string | null
           average_prep_time: number | null
           average_rating: number | null
           banner: string | null
           banner_text: string | null
           base_delivery_fee: number | null
+          city: string | null
           created_at: string | null
           delivery_area: string | null
           delivery_fee: number | null
@@ -287,22 +289,29 @@ export type Database = {
           min_distance_included: number | null
           min_order_value: number | null
           name: string
+          neighborhood: string | null
           peak_time_adjustment: number | null
           phone: string | null
           price_per_km: number | null
+          primary_color: string | null
           show_banner: boolean | null
+          state: string | null
           total_reviews: number | null
           updated_at: string | null
           use_banner_as_login_bg: boolean | null
+          use_gradient: boolean | null
           whatsapp: string | null
+          zip_code: string | null
         }
         Insert: {
+          accent_color?: string | null
           address?: string | null
           average_prep_time?: number | null
           average_rating?: number | null
           banner?: string | null
           banner_text?: string | null
           base_delivery_fee?: number | null
+          city?: string | null
           created_at?: string | null
           delivery_area?: string | null
           delivery_fee?: number | null
@@ -319,22 +328,29 @@ export type Database = {
           min_distance_included?: number | null
           min_order_value?: number | null
           name?: string
+          neighborhood?: string | null
           peak_time_adjustment?: number | null
           phone?: string | null
           price_per_km?: number | null
+          primary_color?: string | null
           show_banner?: boolean | null
+          state?: string | null
           total_reviews?: number | null
           updated_at?: string | null
           use_banner_as_login_bg?: boolean | null
+          use_gradient?: boolean | null
           whatsapp?: string | null
+          zip_code?: string | null
         }
         Update: {
+          accent_color?: string | null
           address?: string | null
           average_prep_time?: number | null
           average_rating?: number | null
           banner?: string | null
           banner_text?: string | null
           base_delivery_fee?: number | null
+          city?: string | null
           created_at?: string | null
           delivery_area?: string | null
           delivery_fee?: number | null
@@ -351,14 +367,19 @@ export type Database = {
           min_distance_included?: number | null
           min_order_value?: number | null
           name?: string
+          neighborhood?: string | null
           peak_time_adjustment?: number | null
           phone?: string | null
           price_per_km?: number | null
+          primary_color?: string | null
           show_banner?: boolean | null
+          state?: string | null
           total_reviews?: number | null
           updated_at?: string | null
           use_banner_as_login_bg?: boolean | null
+          use_gradient?: boolean | null
           whatsapp?: string | null
+          zip_code?: string | null
         }
         Relationships: []
       }

@@ -20,7 +20,8 @@ import {
   Star,
   Phone,
   DollarSign,
-  LogIn
+  LogIn,
+  Palette
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,7 +42,13 @@ export default function AdminSystem() {
   // Contact
   const [phone, setPhone] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  
+  // Location
   const [address, setAddress] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
   
   // Delivery
   const [estimatedDeliveryTime, setEstimatedDeliveryTime] = useState(45);
@@ -58,6 +65,11 @@ export default function AdminSystem() {
   const [useBannerAsLoginBg, setUseBannerAsLoginBg] = useState(true);
   const [showBanner, setShowBanner] = useState(false);
   
+  // Appearance
+  const [primaryColor, setPrimaryColor] = useState('#10b981');
+  const [accentColor, setAccentColor] = useState('#34d399');
+  const [useGradient, setUseGradient] = useState(false);
+  
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -72,6 +84,10 @@ export default function AdminSystem() {
       setPhone(config.establishment.phone || '');
       setWhatsapp(config.establishment.whatsapp || '');
       setAddress(config.establishment.address || '');
+      setNeighborhood(config.establishment.neighborhood || '');
+      setCity(config.establishment.city || 'São Paulo');
+      setState(config.establishment.state || 'SP');
+      setZipCode(config.establishment.zipCode || '');
       setEstimatedDeliveryTime(config.establishment.estimatedDeliveryTime || 45);
       setDeliveryFee(config.establishment.deliveryFee || 5);
       setMinOrderValue(config.establishment.minOrderValue || 20);
@@ -81,6 +97,9 @@ export default function AdminSystem() {
       setBannerText(config.establishment.bannerText || '');
       setShowBanner(config.establishment.showBanner || false);
       setUseBannerAsLoginBg(config.establishment.useBannerAsLoginBg ?? true);
+      setPrimaryColor(config.establishment.primaryColor || '#10b981');
+      setAccentColor(config.establishment.accentColor || '#34d399');
+      setUseGradient(config.establishment.useGradient || false);
     }
   }, [isLoading, config.establishment]);
 
@@ -97,6 +116,10 @@ export default function AdminSystem() {
         phone,
         whatsapp,
         address,
+        neighborhood,
+        city,
+        state,
+        zipCode,
         estimatedDeliveryTime,
         deliveryFee,
         minOrderValue,
@@ -106,6 +129,9 @@ export default function AdminSystem() {
         bannerText,
         showBanner,
         useBannerAsLoginBg,
+        primaryColor,
+        accentColor,
+        useGradient,
       });
       toast.success('Configurações salvas com sucesso!');
       setSaved(true);
@@ -237,34 +263,82 @@ export default function AdminSystem() {
           </div>
         </div>
 
-        {/* Contact & Address */}
+        {/* Location */}
         <div className="card-premium p-6 space-y-4">
           <div className="flex items-center gap-4 mb-4">
             <div className="p-3 rounded-lg bg-primary/10">
               <MapPin className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold">Localização e Contato</h3>
-              <p className="text-sm text-muted-foreground">Endereço e telefones</p>
+              <h3 className="font-semibold">Localização</h3>
+              <p className="text-sm text-muted-foreground">Endereço completo do estabelecimento</p>
             </div>
           </div>
           
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Endereço Completo</label>
-            <Textarea 
+            <label className="text-sm text-muted-foreground mb-1 block">Endereço (Rua e Número)</label>
+            <Input 
               value={address} 
               onChange={e => setAddress(e.target.value)} 
-              placeholder="Rua, número, bairro, cidade - estado"
-              rows={2}
+              placeholder="Rua Exemplo, 123"
             />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">
-                <Phone className="h-3.5 w-3.5 inline mr-1" />
-                Telefone
-              </label>
+              <label className="text-sm text-muted-foreground mb-1 block">Bairro</label>
+              <Input 
+                value={neighborhood} 
+                onChange={e => setNeighborhood(e.target.value)} 
+                placeholder="Centro"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">CEP</label>
+              <Input 
+                value={zipCode} 
+                onChange={e => setZipCode(e.target.value)} 
+                placeholder="00000-000"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Cidade</label>
+              <Input 
+                value={city} 
+                onChange={e => setCity(e.target.value)} 
+                placeholder="São Paulo"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Estado</label>
+              <Input 
+                value={state} 
+                onChange={e => setState(e.target.value)} 
+                placeholder="SP"
+                maxLength={2}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Contact */}
+        <div className="card-premium p-6 space-y-4">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 rounded-lg bg-accent/10">
+              <Phone className="h-6 w-6 text-accent" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Contato</h3>
+              <p className="text-sm text-muted-foreground">Telefones para atendimento</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Telefone</label>
               <Input 
                 value={phone} 
                 onChange={e => setPhone(e.target.value)} 
@@ -272,9 +346,7 @@ export default function AdminSystem() {
               />
             </div>
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">
-                WhatsApp
-              </label>
+              <label className="text-sm text-muted-foreground mb-1 block">WhatsApp</label>
               <Input 
                 value={whatsapp} 
                 onChange={e => setWhatsapp(e.target.value)} 
@@ -287,8 +359,8 @@ export default function AdminSystem() {
         {/* Delivery Settings */}
         <div className="card-premium p-6 space-y-4">
           <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 rounded-lg bg-accent/10">
-              <Truck className="h-6 w-6 text-accent" />
+            <div className="p-3 rounded-lg bg-primary/10">
+              <Truck className="h-6 w-6 text-primary" />
             </div>
             <div>
               <h3 className="font-semibold">Configurações de Entrega</h3>
@@ -345,8 +417,8 @@ export default function AdminSystem() {
         {/* Rating Settings */}
         <div className="card-premium p-6 space-y-4">
           <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 rounded-lg bg-primary/10">
-              <Star className="h-6 w-6 text-primary" />
+            <div className="p-3 rounded-lg bg-accent/10">
+              <Star className="h-6 w-6 text-accent" />
             </div>
             <div>
               <h3 className="font-semibold">Avaliação</h3>
@@ -385,6 +457,101 @@ export default function AdminSystem() {
                 onChange={e => setTotalReviews(Math.max(0, Number(e.target.value)))} 
                 min={0}
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Appearance Settings */}
+        <div className="card-premium p-6 space-y-4">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 rounded-lg bg-primary/10">
+              <Palette className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Aparência</h3>
+              <p className="text-sm text-muted-foreground">Cores e estilo do cardápio</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Cor Primária</label>
+              <div className="flex items-center gap-3">
+                <input 
+                  type="color"
+                  value={primaryColor} 
+                  onChange={e => setPrimaryColor(e.target.value)} 
+                  className="w-12 h-10 rounded-lg border cursor-pointer"
+                />
+                <Input 
+                  value={primaryColor} 
+                  onChange={e => setPrimaryColor(e.target.value)} 
+                  placeholder="#10b981"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Cor de Destaque</label>
+              <div className="flex items-center gap-3">
+                <input 
+                  type="color"
+                  value={accentColor} 
+                  onChange={e => setAccentColor(e.target.value)} 
+                  className="w-12 h-10 rounded-lg border cursor-pointer"
+                />
+                <Input 
+                  value={accentColor} 
+                  onChange={e => setAccentColor(e.target.value)} 
+                  placeholder="#34d399"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-8 h-8 rounded-lg"
+                style={{
+                  background: useGradient 
+                    ? `linear-gradient(135deg, ${primaryColor}, ${accentColor})`
+                    : primaryColor
+                }}
+              />
+              <div>
+                <span className="font-medium">Usar Gradiente</span>
+                <p className="text-xs text-muted-foreground">
+                  Aplica degradê entre as cores primária e de destaque
+                </p>
+              </div>
+            </div>
+            <Switch checked={useGradient} onCheckedChange={setUseGradient} />
+          </div>
+          
+          <div className="p-4 rounded-lg border bg-muted/30">
+            <p className="text-sm font-medium mb-2">Prévia</p>
+            <div className="flex items-center gap-3">
+              <Button 
+                style={{
+                  background: useGradient 
+                    ? `linear-gradient(135deg, ${primaryColor}, ${accentColor})`
+                    : primaryColor,
+                  color: '#fff'
+                }}
+              >
+                Botão Primário
+              </Button>
+              <Button 
+                variant="outline"
+                style={{
+                  borderColor: primaryColor,
+                  color: primaryColor
+                }}
+              >
+                Botão Outline
+              </Button>
             </div>
           </div>
         </div>

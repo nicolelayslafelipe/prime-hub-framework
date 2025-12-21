@@ -84,6 +84,11 @@ export interface EstablishmentSettings {
   address: string;
   phone: string;
   whatsapp?: string;
+  // Location fields
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  neighborhood?: string;
   // Distance-based fee settings
   distanceFeeEnabled?: boolean;
   baseDeliveryFee?: number;
@@ -100,6 +105,10 @@ export interface EstablishmentSettings {
   totalReviews?: number;
   // Login background
   useBannerAsLoginBg?: boolean;
+  // Appearance
+  primaryColor?: string;
+  accentColor?: string;
+  useGradient?: boolean;
 }
 
 export interface ThemeSettings {
