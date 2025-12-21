@@ -14,6 +14,7 @@ import { Cart } from '@/components/client/Cart';
 import { Checkout } from '@/components/client/Checkout';
 import { OrderTracking } from '@/components/client/OrderTracking';
 import { HeroBanner } from '@/components/client/HeroBanner';
+import { BannerCarousel } from '@/components/client/BannerCarousel';
 import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { Order } from '@/types';
@@ -225,10 +226,17 @@ export default function ClientPanel() {
           </div>
         </header>
 
+        {/* Marketing Banners */}
+        <section className="py-4 px-4 md:px-6">
+          <div className="max-w-4xl mx-auto">
+            <BannerCarousel />
+          </div>
+        </section>
+
         {/* Hero Section */}
         <section className="py-8 px-4 md:px-6 border-b border-border">
           <div className="max-w-4xl mx-auto space-y-6">
-            {/* Banner */}
+            {/* Main Banner */}
             <HeroBanner />
             
             {/* Store Info */}
