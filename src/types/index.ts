@@ -40,6 +40,8 @@ export interface Order {
   customerName: string;
   customerPhone: string;
   customerAddress: string;
+  customerLatitude?: number;
+  customerLongitude?: number;
   items: OrderItem[];
   status: OrderStatus;
   subtotal: number;
