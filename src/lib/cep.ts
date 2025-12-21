@@ -55,27 +55,33 @@ export async function fetchAddressByCep(cep: string): Promise<AddressFromCep | n
   }
 
   try {
-    const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+    const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
     
     if (!response.ok) {
-      throw new Error('Failed to fetch address');
+      console.error('ViaCEP API error:', response.status);
+      return null;
     }
 
     const data: ViaCepResponse = await response.json();
 
+    // Check if CEP was not found (API returns { erro: true })
     if (data.erro) {
       return null;
     }
 
-    // CEP found - check if it's a generic city CEP (no street data)
-    const isPartial = !data.logradouro || !data.bairro;
-    
+    // Return whatever data we have - client fills in the rest
+    // isPartial = true when we don't have street info (generic city CEP)
     return {
       street: data.logradouro || '',
       neighborhood: data.bairro || '',
       city: data.localidade || '',
       state: data.uf || '',
-      isPartial,
+      isPartial: !data.logradouro,
     };
   } catch (error) {
     console.error('Error fetching address from CEP:', error);

@@ -157,9 +157,10 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     }
   }, [profile]);
 
-  // CEP auto-search
+  // CEP auto-search - fills city, state, and neighborhood (if available)
   const handleCepSearch = useCallback(async (cep: string) => {
-    if (!isValidCep(cep)) {
+    const cleanCep = formatCep(cep);
+    if (cleanCep.length !== 8) {
       setCepFound(false);
       return;
     }
@@ -168,59 +169,53 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     setCepFound(false);
 
     try {
-      const addressData = await fetchAddressByCep(cep);
+      const addressData = await fetchAddressByCep(cleanCep);
       
       if (addressData) {
-        // Update address fields with whatever data we received
+        // Always set city and state
         setNewAddress(prev => ({
           ...prev,
-          street: addressData.street || prev.street,
-          neighborhood: addressData.neighborhood || prev.neighborhood,
           city: addressData.city,
           state: addressData.state,
+          // Only set street/neighborhood if available, otherwise keep what user typed
+          street: addressData.street || prev.street,
+          neighborhood: addressData.neighborhood || prev.neighborhood,
         }));
         setCepFound(true);
         
         if (addressData.isPartial) {
-          // Generic city CEP - user needs to fill street and neighborhood
-          toast.info('CEP de cidade encontrado', {
-            description: 'Preencha a rua e o bairro manualmente',
+          toast.info('CEP encontrado', {
+            description: `${addressData.city} - ${addressData.state}. Preencha rua e bairro.`,
           });
-          // Focus on street field for partial CEPs
           setTimeout(() => {
             document.getElementById('checkout-street')?.focus();
           }, 100);
         } else {
           toast.success('Endereço encontrado!');
-          // Focus on number field for complete CEPs
           setTimeout(() => {
             document.getElementById('checkout-number')?.focus();
           }, 100);
         }
       } else {
-        toast.error('CEP não encontrado', {
-          description: 'Verifique o CEP digitado',
-        });
+        toast.error('CEP não encontrado');
+        setCepFound(false);
       }
-    } catch {
+    } catch (err) {
+      console.error('CEP search error:', err);
       toast.error('Erro ao buscar CEP');
+      setCepFound(false);
     } finally {
       setIsSearchingCep(false);
     }
   }, []);
 
-  // Debounced CEP search
+  // Trigger CEP search when 8 digits are entered
   useEffect(() => {
     const cleanCep = formatCep(newAddress.zip_code || '');
-    if (cleanCep.length === 8) {
-      const timer = setTimeout(() => {
-        handleCepSearch(cleanCep);
-      }, 500);
-      return () => clearTimeout(timer);
-    } else {
-      setCepFound(false);
+    if (cleanCep.length === 8 && !cepFound && !isSearchingCep) {
+      handleCepSearch(cleanCep);
     }
-  }, [newAddress.zip_code, handleCepSearch]);
+  }, [newAddress.zip_code, cepFound, isSearchingCep, handleCepSearch]);
 
   const getSelectedAddress = (): ClientAddress | null => {
     if (selectedAddressId) {
