@@ -27,6 +27,7 @@ import {
 const profileSchema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').max(100),
   phone: z.string().optional(),
+  email: z.string().email('Email inválido').max(255),
 });
 
 const passwordSchema = z.object({
@@ -47,7 +48,7 @@ interface ProfileEditorProps {
 }
 
 export function ProfileEditor({ variant = 'client', showPhone = true }: ProfileEditorProps) {
-  const { user, profile, updateProfile, updatePassword, uploadAvatar, refreshProfile } = useAuth();
+  const { user, profile, updateProfile, updatePassword, updateEmail, uploadAvatar, refreshProfile } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,6 +65,7 @@ export function ProfileEditor({ variant = 'client', showPhone = true }: ProfileE
     defaultValues: {
       name: profile?.name || '',
       phone: profile?.phone || '',
+      email: user?.email || '',
     },
   });
 
@@ -120,12 +122,24 @@ export function ProfileEditor({ variant = 'client', showPhone = true }: ProfileE
   const onSubmitProfile = async (data: ProfileFormData) => {
     setIsSavingProfile(true);
     try {
+      // Update profile data (name and phone)
       const { error } = await updateProfile({
         name: data.name,
         phone: data.phone || null,
       });
       
       if (error) throw error;
+      
+      // Update email if changed
+      if (data.email && data.email !== user?.email) {
+        const { error: emailError } = await updateEmail(data.email);
+        if (emailError) throw emailError;
+        
+        toast({
+          title: 'Email de confirmação enviado!',
+          description: 'Verifique sua caixa de entrada para confirmar o novo email.',
+        });
+      }
       
       await refreshProfile();
       toast({
@@ -273,13 +287,16 @@ export function ProfileEditor({ variant = 'client', showPhone = true }: ProfileE
                 <Input
                   id="email"
                   type="email"
-                  value={user?.email || ''}
-                  disabled
-                  className="pl-10 bg-muted"
+                  placeholder="seu@email.com"
+                  className="pl-10"
+                  {...profileForm.register('email')}
                 />
               </div>
+              {profileForm.formState.errors.email && (
+                <p className="text-xs text-destructive">{profileForm.formState.errors.email.message}</p>
+              )}
               <p className="text-xs text-muted-foreground">
-                Para alterar o email, entre em contato com o suporte.
+                Um email de confirmação será enviado ao alterar.
               </p>
             </div>
 
