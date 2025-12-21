@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useCart } from '@/contexts/CartContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useOrders } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClientAddresses, ClientAddress } from '@/hooks/useClientAddresses';
+import { useClientPreferences } from '@/hooks/useClientPreferences';
+import { fetchAddressByCep, formatCepForDisplay, isValidCep, formatCep } from '@/lib/cep';
+import { toast } from 'sonner';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -19,7 +24,15 @@ import {
   Banknote, 
   Smartphone,
   CheckCircle2,
-  Coins
+  Coins,
+  Plus,
+  Star,
+  AlertCircle,
+  Loader2,
+  Home,
+  Building2,
+  Briefcase,
+  Search
 } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -36,23 +49,66 @@ const paymentMethods = [
   { id: 'cash', label: 'Dinheiro', icon: Banknote, description: 'Pagamento na entrega' },
 ];
 
+const labelIcons: Record<string, React.ReactNode> = {
+  'Casa': <Home className="h-4 w-4" />,
+  'Apartamento': <Building2 className="h-4 w-4" />,
+  'Trabalho': <Briefcase className="h-4 w-4" />,
+};
+
+interface NewAddressForm {
+  zip_code: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+}
+
 export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   const navigate = useNavigate();
   const { items, getSubtotal, clearCart } = useCart();
   const { config } = useConfig();
   const { addOrder, orders } = useOrders();
   const { user, profile } = useAuth();
+  const { 
+    addresses, 
+    isLoading: isLoadingAddresses, 
+    getDefaultAddress, 
+    formatAddressForDisplay,
+    validateAddress,
+    getValidationErrors,
+    refetch: refetchAddresses
+  } = useClientAddresses();
+  const { preferences, updatePreference } = useClientPreferences();
   
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [paymentMethod, setPaymentMethod] = useState('pix');
-  const [address, setAddress] = useState(profile?.address || '');
   const [notes, setNotes] = useState('');
   const [customerName, setCustomerName] = useState(profile?.name || '');
   const [customerPhone, setCustomerPhone] = useState(profile?.phone || '');
   
+  // Address state
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [newAddress, setNewAddress] = useState<NewAddressForm>({
+    zip_code: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: 'SP',
+  });
+  const [isSearchingCep, setIsSearchingCep] = useState(false);
+  const [cepFound, setCepFound] = useState(false);
+  
   // Change fields for cash payment
   const [needsChange, setNeedsChange] = useState(false);
   const [changeFor, setChangeFor] = useState<string>('');
+  
+  // Validation
+  const [addressErrors, setAddressErrors] = useState<string[]>([]);
 
   const subtotal = getSubtotal();
   const deliveryFee = config.establishment.deliveryFee;
@@ -61,13 +117,151 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   const changeForNumber = parseFloat(changeFor) || 0;
   const changeAmount = changeForNumber > total ? changeForNumber - total : 0;
 
-  const handlePlaceOrder = () => {
+  // Initialize selected address from saved addresses
+  useEffect(() => {
+    if (!isLoadingAddresses && addresses.length > 0 && !selectedAddressId) {
+      const defaultAddr = getDefaultAddress();
+      if (defaultAddr) {
+        setSelectedAddressId(defaultAddr.id);
+        setShowNewAddressForm(false);
+      }
+    } else if (!isLoadingAddresses && addresses.length === 0) {
+      setShowNewAddressForm(true);
+    }
+  }, [isLoadingAddresses, addresses, selectedAddressId, getDefaultAddress]);
+
+  // Initialize payment method from preferences
+  useEffect(() => {
+    if (preferences?.last_payment_method && preferences.save_payment_method) {
+      setPaymentMethod(preferences.last_payment_method);
+    }
+  }, [preferences]);
+
+  // Update customer info when profile changes
+  useEffect(() => {
+    if (profile) {
+      if (profile.name) setCustomerName(profile.name);
+      if (profile.phone) setCustomerPhone(profile.phone);
+    }
+  }, [profile]);
+
+  // CEP auto-search
+  const handleCepSearch = useCallback(async (cep: string) => {
+    if (!isValidCep(cep)) {
+      setCepFound(false);
+      return;
+    }
+
+    setIsSearchingCep(true);
+    setCepFound(false);
+
+    try {
+      const addressData = await fetchAddressByCep(cep);
+      
+      if (addressData) {
+        setNewAddress(prev => ({
+          ...prev,
+          street: addressData.street,
+          neighborhood: addressData.neighborhood,
+          city: addressData.city,
+          state: addressData.state,
+        }));
+        setCepFound(true);
+        toast.success('Endereço encontrado!');
+        
+        // Focus on number field
+        setTimeout(() => {
+          document.getElementById('checkout-number')?.focus();
+        }, 100);
+      } else {
+        toast.error('CEP não encontrado');
+      }
+    } catch {
+      toast.error('Erro ao buscar CEP');
+    } finally {
+      setIsSearchingCep(false);
+    }
+  }, []);
+
+  // Debounced CEP search
+  useEffect(() => {
+    const cleanCep = formatCep(newAddress.zip_code || '');
+    if (cleanCep.length === 8) {
+      const timer = setTimeout(() => {
+        handleCepSearch(cleanCep);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setCepFound(false);
+    }
+  }, [newAddress.zip_code, handleCepSearch]);
+
+  const getSelectedAddress = (): ClientAddress | null => {
+    if (selectedAddressId) {
+      return addresses.find(a => a.id === selectedAddressId) || null;
+    }
+    return null;
+  };
+
+  const getAddressForOrder = (): string => {
+    if (showNewAddressForm) {
+      let formatted = `${newAddress.street}, ${newAddress.number}`;
+      if (newAddress.complement) formatted += ` - ${newAddress.complement}`;
+      formatted += ` - ${newAddress.neighborhood}, ${newAddress.city} - ${newAddress.state}`;
+      formatted += ` (CEP: ${newAddress.zip_code})`;
+      return formatted;
+    }
+    
+    const selected = getSelectedAddress();
+    if (selected) {
+      return formatAddressForDisplay(selected);
+    }
+    
+    return 'Endereço não informado';
+  };
+
+  const validateOrderAddress = (): boolean => {
+    if (showNewAddressForm) {
+      const errors: string[] = [];
+      const cleanZip = formatCep(newAddress.zip_code);
+      
+      if (cleanZip.length !== 8) errors.push('CEP inválido');
+      if (!newAddress.street?.trim()) errors.push('Rua é obrigatória');
+      if (!newAddress.number?.trim()) errors.push('Número é obrigatório');
+      if (!newAddress.neighborhood?.trim()) errors.push('Bairro é obrigatório');
+      if (!newAddress.city?.trim()) errors.push('Cidade é obrigatória');
+      if (!newAddress.state?.trim()) errors.push('Estado é obrigatório');
+      
+      setAddressErrors(errors);
+      return errors.length === 0;
+    } else {
+      const selected = getSelectedAddress();
+      const errors = getValidationErrors(selected);
+      setAddressErrors(errors);
+      return errors.length === 0;
+    }
+  };
+
+  const handlePlaceOrder = async () => {
     // Check if user is authenticated
     if (!user) {
       localStorage.setItem('pendingCheckout', 'true');
       onClose();
       navigate('/auth?tab=login');
       return;
+    }
+
+    // Validate address
+    if (!validateOrderAddress()) {
+      toast.error('Endereço incompleto', {
+        description: addressErrors[0] || 'Verifique o endereço de entrega',
+      });
+      return;
+    }
+
+    // Save payment method preference
+    if (preferences?.save_payment_method) {
+      await updatePreference('last_payment_method', paymentMethod);
     }
 
     const orderNumber = 1000 + orders.length + 1;
@@ -78,7 +272,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
       customerId: user.id,
       customerName: customerName || profile?.name || 'Cliente',
       customerPhone: customerPhone || profile?.phone || '(00) 00000-0000',
-      customerAddress: address || 'Endereço não informado',
+      customerAddress: getAddressForOrder(),
       items: items.map((item, index) => ({
         id: `item-${index}`,
         productId: item.product.id,
@@ -123,8 +317,34 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     setStep('form');
     setNeedsChange(false);
     setChangeFor('');
+    setAddressErrors([]);
     onClose();
   };
+
+  const handleCepChange = (value: string) => {
+    const formatted = formatCepForDisplay(value);
+    setNewAddress(prev => ({ ...prev, zip_code: formatted }));
+  };
+
+  const isAddressValid = (): boolean => {
+    if (showNewAddressForm) {
+      const cleanZip = formatCep(newAddress.zip_code);
+      return !!(
+        cleanZip.length === 8 &&
+        newAddress.street?.trim() &&
+        newAddress.number?.trim() &&
+        newAddress.neighborhood?.trim() &&
+        newAddress.city?.trim() &&
+        newAddress.state?.trim()
+      );
+    }
+    return !!selectedAddressId && validateAddress(getSelectedAddress());
+  };
+
+  const canPlaceOrder = 
+    items.length > 0 && 
+    isAddressValid() && 
+    !(paymentMethod === 'cash' && needsChange && changeForNumber < total);
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -179,19 +399,183 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                   <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs text-primary font-bold">2</div>
                   Endereço de entrega
                 </h3>
-                <div className="space-y-2">
-                  <Label htmlFor="address">Endereço completo</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      id="address" 
-                      placeholder="Rua, número, bairro..."
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="pl-10 bg-secondary/50"
-                    />
+                
+                {isLoadingAddresses ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
                   </div>
-                </div>
+                ) : addresses.length > 0 ? (
+                  <div className="space-y-3">
+                    {/* Saved addresses */}
+                    <RadioGroup 
+                      value={showNewAddressForm ? 'new' : (selectedAddressId || '')} 
+                      onValueChange={(value) => {
+                        if (value === 'new') {
+                          setShowNewAddressForm(true);
+                          setSelectedAddressId(null);
+                        } else {
+                          setShowNewAddressForm(false);
+                          setSelectedAddressId(value);
+                        }
+                        setAddressErrors([]);
+                      }}
+                      className="space-y-2"
+                    >
+                      {addresses.map((addr) => (
+                        <label
+                          key={addr.id}
+                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                            selectedAddressId === addr.id && !showNewAddressForm
+                              ? 'border-primary bg-primary/5' 
+                              : 'border-border bg-secondary/30 hover:bg-secondary/50'
+                          }`}
+                        >
+                          <RadioGroupItem value={addr.id} className="mt-1" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              {labelIcons[addr.label] || <MapPin className="h-4 w-4" />}
+                              <span className="font-medium text-sm">{addr.label}</span>
+                              {addr.is_default && (
+                                <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs flex items-center gap-0.5">
+                                  <Star className="h-3 w-3 fill-primary" />
+                                  Padrão
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {formatAddressForDisplay(addr)}
+                            </p>
+                          </div>
+                        </label>
+                      ))}
+                      
+                      {/* New address option */}
+                      <label
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                          showNewAddressForm
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-border bg-secondary/30 hover:bg-secondary/50'
+                        }`}
+                      >
+                        <RadioGroupItem value="new" />
+                        <Plus className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Entregar em outro endereço</span>
+                      </label>
+                    </RadioGroup>
+                  </div>
+                ) : null}
+
+                {/* New address form */}
+                {(showNewAddressForm || addresses.length === 0) && (
+                  <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border animate-fade-in">
+                    <div className="space-y-2">
+                      <Label htmlFor="checkout-cep">CEP</Label>
+                      <div className="relative">
+                        <Input
+                          id="checkout-cep"
+                          placeholder="00000-000"
+                          value={newAddress.zip_code}
+                          onChange={(e) => handleCepChange(e.target.value)}
+                          className="pr-10 bg-background"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {isSearchingCep ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          ) : cepFound ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Search className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="checkout-street">Rua</Label>
+                      <Input
+                        id="checkout-street"
+                        placeholder="Rua, Avenida..."
+                        value={newAddress.street}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, street: e.target.value }))}
+                        className="bg-background"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="checkout-number">Número</Label>
+                        <Input
+                          id="checkout-number"
+                          placeholder="123"
+                          value={newAddress.number}
+                          onChange={(e) => setNewAddress(prev => ({ ...prev, number: e.target.value }))}
+                          className="bg-background"
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-2">
+                        <Label htmlFor="checkout-complement">Complemento</Label>
+                        <Input
+                          id="checkout-complement"
+                          placeholder="Apto, bloco..."
+                          value={newAddress.complement}
+                          onChange={(e) => setNewAddress(prev => ({ ...prev, complement: e.target.value }))}
+                          className="bg-background"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="checkout-neighborhood">Bairro</Label>
+                      <Input
+                        id="checkout-neighborhood"
+                        placeholder="Bairro"
+                        value={newAddress.neighborhood}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, neighborhood: e.target.value }))}
+                        className="bg-background"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-2 space-y-2">
+                        <Label htmlFor="checkout-city">Cidade</Label>
+                        <Input
+                          id="checkout-city"
+                          placeholder="Cidade"
+                          value={newAddress.city}
+                          onChange={(e) => setNewAddress(prev => ({ ...prev, city: e.target.value }))}
+                          className="bg-background"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="checkout-state">Estado</Label>
+                        <Input
+                          id="checkout-state"
+                          placeholder="SP"
+                          value={newAddress.state}
+                          onChange={(e) => setNewAddress(prev => ({ ...prev, state: e.target.value }))}
+                          className="bg-background"
+                          maxLength={2}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Address validation errors */}
+                {addressErrors.length > 0 && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 space-y-1">
+                    <div className="flex items-center gap-2 text-destructive font-medium text-sm">
+                      <AlertCircle className="h-4 w-4" />
+                      Endereço incompleto
+                    </div>
+                    <ul className="text-xs text-destructive/80 list-disc list-inside">
+                      {addressErrors.map((error, i) => (
+                        <li key={i}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <Separator />
@@ -351,10 +735,15 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
               <Button 
                 className="w-full h-12 font-semibold text-base"
                 onClick={handlePlaceOrder}
-                disabled={items.length === 0 || (paymentMethod === 'cash' && needsChange && changeForNumber < total)}
+                disabled={!canPlaceOrder}
               >
                 Confirmar Pedido
               </Button>
+              {!isAddressValid() && items.length > 0 && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Preencha o endereço de entrega para continuar
+                </p>
+              )}
             </div>
           </>
         ) : (
