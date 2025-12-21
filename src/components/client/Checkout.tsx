@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClientAddresses, ClientAddress } from '@/hooks/useClientAddresses';
 import { useClientPreferences } from '@/hooks/useClientPreferences';
 import { useDeliveryFeeCalculation } from '@/hooks/useDeliveryFeeCalculation';
+import { useETACalculation } from '@/hooks/useETACalculation';
 import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
 import { GeocodedAddress } from '@/hooks/useAddressSearch';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,7 +35,8 @@ import {
   Home,
   Building2,
   Briefcase,
-  Loader2
+  Loader2,
+  Clock
 } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -86,6 +88,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   } = useClientAddresses();
   const { preferences, updatePreference } = useClientPreferences();
   const { calculateFee, isCalculating: isCalculatingFee, lastResult: feeResult } = useDeliveryFeeCalculation();
+  const { calculateETA, isCalculating: isCalculatingETA, lastResult: etaResult } = useETACalculation();
   
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [paymentMethod, setPaymentMethod] = useState('pix');
@@ -121,6 +124,9 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   const [calculatedDeliveryFee, setCalculatedDeliveryFee] = useState<number | null>(null);
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [isOutsideDeliveryArea, setIsOutsideDeliveryArea] = useState(false);
+  
+  // Dynamic ETA
+  const [estimatedTime, setEstimatedTime] = useState<string | null>(null);
 
   // Reset new address form
   const resetNewAddressForm = useCallback(() => {
@@ -130,6 +136,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     setCalculatedDeliveryFee(null);
     setDeliveryDistance(null);
     setIsOutsideDeliveryArea(false);
+    setEstimatedTime(null);
   }, []);
 
   const subtotal = getSubtotal();
@@ -184,7 +191,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     });
     setAddressErrors([]);
     
-    // Calculate delivery fee if distance-based pricing is enabled
+    // Calculate delivery fee and ETA if distance-based pricing is enabled
     if (config.establishment.distanceFeeEnabled && address.latitude && address.longitude) {
       const result = await calculateFee(address.latitude, address.longitude, {
         enabled: true,
@@ -208,11 +215,27 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
           });
         } else {
           setIsOutsideDeliveryArea(false);
+          
+          // Calculate ETA
+          const etaResult = await calculateETA(address.latitude, address.longitude, {
+            establishmentLatitude: config.establishment.establishmentLatitude || null,
+            establishmentLongitude: config.establishment.establishmentLongitude || null,
+            averagePrepTime: config.establishment.averagePrepTime || 15,
+            peakTimeAdjustment: 0, // Could add peak hour detection
+          });
+          
+          if (etaResult) {
+            setEstimatedTime(etaResult.displayText);
+          }
+          
           toast.success('Endereço selecionado!');
         }
       }
     } else {
       setIsOutsideDeliveryArea(false);
+      // Simple ETA fallback
+      const prepTime = config.establishment.averagePrepTime || 15;
+      setEstimatedTime(`${prepTime + 20}-${prepTime + 30} min`);
       toast.success('Endereço selecionado!');
     }
     
@@ -222,7 +245,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
         document.getElementById('checkout-number')?.focus();
       }, 100);
     }
-  }, [config.establishment, calculateFee]);
+  }, [config.establishment, calculateFee, calculateETA]);
   
   // Calculate fee when selecting a saved address with coordinates
   const handleSelectSavedAddress = useCallback(async (addr: ClientAddress) => {
@@ -254,14 +277,29 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
           });
         } else {
           setIsOutsideDeliveryArea(false);
+          
+          // Calculate ETA
+          const etaResult = await calculateETA(addr.latitude, addr.longitude, {
+            establishmentLatitude: config.establishment.establishmentLatitude || null,
+            establishmentLongitude: config.establishment.establishmentLongitude || null,
+            averagePrepTime: config.establishment.averagePrepTime || 15,
+            peakTimeAdjustment: 0,
+          });
+          
+          if (etaResult) {
+            setEstimatedTime(etaResult.displayText);
+          }
         }
       }
     } else {
       setCalculatedDeliveryFee(null);
       setDeliveryDistance(null);
       setIsOutsideDeliveryArea(false);
+      // Simple ETA fallback
+      const prepTime = config.establishment.averagePrepTime || 15;
+      setEstimatedTime(`${prepTime + 20}-${prepTime + 30} min`);
     }
-  }, [config.establishment, calculateFee]);
+  }, [config.establishment, calculateFee, calculateETA]);
 
   const getSelectedAddress = (): ClientAddress | null => {
     if (selectedAddressId) {
@@ -903,6 +941,17 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                       {isOutsideDeliveryArea ? "—" : `R$ ${total.toFixed(2)}`}
                     </span>
                   </div>
+                  
+                  {/* ETA Display */}
+                  {estimatedTime && !isOutsideDeliveryArea && (
+                    <div className="flex items-center justify-center gap-2 pt-3 mt-2 border-t border-border">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span className="text-sm">
+                        Entrega estimada: <span className="font-semibold text-primary">{estimatedTime}</span>
+                      </span>
+                      {isCalculatingETA && <Loader2 className="h-3 w-3 animate-spin" />}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -936,7 +985,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
             <div className="bg-secondary/50 rounded-lg p-4 w-full max-w-xs">
               <p className="text-sm text-muted-foreground mb-1">Tempo estimado de entrega</p>
               <p className="text-2xl font-bold text-primary">
-                {config.establishment.estimatedDeliveryTime} min
+                {estimatedTime || `${config.establishment.estimatedDeliveryTime} min`}
               </p>
             </div>
           </div>

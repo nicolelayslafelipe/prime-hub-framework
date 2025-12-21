@@ -266,6 +266,7 @@ export type Database = {
       establishment_settings: {
         Row: {
           address: string | null
+          average_prep_time: number | null
           banner: string | null
           banner_text: string | null
           base_delivery_fee: number | null
@@ -285,6 +286,7 @@ export type Database = {
           min_distance_included: number | null
           min_order_value: number | null
           name: string
+          peak_time_adjustment: number | null
           phone: string | null
           price_per_km: number | null
           show_banner: boolean | null
@@ -293,6 +295,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          average_prep_time?: number | null
           banner?: string | null
           banner_text?: string | null
           base_delivery_fee?: number | null
@@ -312,6 +315,7 @@ export type Database = {
           min_distance_included?: number | null
           min_order_value?: number | null
           name?: string
+          peak_time_adjustment?: number | null
           phone?: string | null
           price_per_km?: number | null
           show_banner?: boolean | null
@@ -320,6 +324,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          average_prep_time?: number | null
           banner?: string | null
           banner_text?: string | null
           base_delivery_fee?: number | null
@@ -339,6 +344,7 @@ export type Database = {
           min_distance_included?: number | null
           min_order_value?: number | null
           name?: string
+          peak_time_adjustment?: number | null
           phone?: string | null
           price_per_km?: number | null
           show_banner?: boolean | null
