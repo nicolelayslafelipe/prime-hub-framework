@@ -190,12 +190,29 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     }
   }, [isLoadingAddresses, addresses, selectedAddressId, getDefaultAddress]);
 
-  // Initialize payment method from preferences
+  // Initialize payment method from preferences - with validation
   useEffect(() => {
-    if (preferences?.last_payment_method && preferences.save_payment_method) {
-      setPaymentMethod(preferences.last_payment_method);
+    if (!isLoadingPaymentMethods && paymentMethods.length > 0) {
+      if (preferences?.last_payment_method && preferences.save_payment_method) {
+        // Check if the saved payment method is still active
+        const savedMethodIsActive = isMethodActive(preferences.last_payment_method);
+        
+        if (savedMethodIsActive) {
+          setPaymentMethod(preferences.last_payment_method);
+        } else {
+          // Fallback to first available payment method
+          if (paymentMethods.length > 0) {
+            setPaymentMethod(paymentMethods[0].id);
+          }
+        }
+      } else {
+        // No saved preference, use first method
+        if (paymentMethods.length > 0) {
+          setPaymentMethod(paymentMethods[0].id);
+        }
+      }
     }
-  }, [preferences]);
+  }, [preferences, paymentMethods, isLoadingPaymentMethods, isMethodActive]);
 
   // Update customer info when profile changes
   useEffect(() => {
