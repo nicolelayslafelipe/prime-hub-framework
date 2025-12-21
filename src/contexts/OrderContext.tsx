@@ -1,5 +1,5 @@
 import React, { createContext, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
-import { Order, OrderStatus } from '@/types';
+import { Order, OrderStatus, SoundEventType } from '@/types';
 import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 import { useSound } from '@/contexts/SoundContext';
 
@@ -24,42 +24,102 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const soundContext = useSound();
   const initialLoadRef = useRef(true);
 
+  // Handle new order - triggered when a new order is inserted
   const handleNewOrder = useCallback((order: Order) => {
-    console.log('New order received:', order.orderNumber);
+    console.log('[Order] New order received:', order.orderNumber, 'status:', order.status);
     
     // Skip sound on initial load (existing orders)
     if (initialLoadRef.current) {
+      console.log('[Order] Skipping sound - initial load');
       return;
     }
-    
-    // Play sound for new pending orders (admin panel)
+
+    // New pending order → Admin notification
     if (order.status === 'pending') {
-      const played = soundContext.playSound('admin', order.id);
+      console.log('[Order] Playing new_order sound for admin');
+      const played = soundContext.playSoundForEvent('new_order', order.id, 'admin');
       if (played) {
-        soundContext.markOrderAsAlerted(order.id);
-        console.log('Admin sound played for order:', order.id);
+        soundContext.markOrderAsAlerted(order.id, 'admin');
+      }
+
+      // Also notify kitchen about new order
+      console.log('[Order] Playing order_to_kitchen sound');
+      const kitchenPlayed = soundContext.playSoundForEvent('order_to_kitchen', order.id, 'kitchen');
+      if (kitchenPlayed) {
+        soundContext.markOrderAsAlerted(order.id, 'kitchen');
+        // Start kitchen repeat if enabled
+        soundContext.startKitchenRepeat(order.id);
+      }
+    }
+
+    // If order starts as confirmed (e.g., PDV), also notify kitchen
+    if (order.status === 'confirmed') {
+      console.log('[Order] Confirmed order - notifying kitchen');
+      const kitchenPlayed = soundContext.playSoundForEvent('order_to_kitchen', order.id, 'kitchen');
+      if (kitchenPlayed) {
+        soundContext.markOrderAsAlerted(order.id, 'kitchen');
+        soundContext.startKitchenRepeat(order.id);
       }
     }
   }, [soundContext]);
 
-  const handleOrderUpdate = useCallback((order: Order) => {
-    // Kitchen panel: play sound for pending/preparing orders
-    if (order.status === 'pending' || order.status === 'preparing') {
-      const played = soundContext.playSound('kitchen', order.id);
+  // Handle order update - triggered when an order is updated
+  const handleOrderUpdate = useCallback((order: Order, oldStatus?: OrderStatus) => {
+    console.log('[Order] Order updated:', order.orderNumber, 'from:', oldStatus, 'to:', order.status);
+
+    // Skip sound on initial load
+    if (initialLoadRef.current) {
+      return;
+    }
+
+    // Order moved from pending to confirmed (payment confirmed or admin action)
+    if (oldStatus === 'pending' && order.status === 'confirmed') {
+      console.log('[Order] Order confirmed - notifying admin');
+      soundContext.playSoundForEvent('order_paid', order.id, 'admin');
+    }
+
+    // Order moved to preparing - notify kitchen
+    if (order.status === 'preparing' && oldStatus !== 'preparing') {
+      console.log('[Order] Order preparing - notifying kitchen');
+      const played = soundContext.playSoundForEvent('order_to_kitchen', order.id, 'kitchen');
       if (played) {
-        soundContext.markOrderAsAlerted(order.id);
-        
-        // Start kitchen repeat if enabled
-        if (order.status === 'pending') {
-          soundContext.startKitchenRepeat(order.id);
-        }
-        
-        console.log('Kitchen sound played for order:', order.id);
+        soundContext.markOrderAsAlerted(order.id, 'kitchen');
       }
     }
-    
-    // Stop kitchen repeat when order moves past pending/preparing
-    if (order.status !== 'pending' && order.status !== 'preparing') {
+
+    // Order is ready - notify admin and motoboy
+    if (order.status === 'ready' && oldStatus !== 'ready') {
+      console.log('[Order] Order ready - notifying admin and motoboy');
+      soundContext.playSoundForEvent('order_ready', order.id, 'admin');
+      soundContext.playSoundForEvent('motoboy_available', order.id, 'motoboy');
+      
+      // Stop kitchen repeat when order is ready
+      soundContext.stopKitchenRepeat();
+    }
+
+    // Order out for delivery - motoboy assigned
+    if (order.status === 'out_for_delivery' && oldStatus !== 'out_for_delivery') {
+      console.log('[Order] Order out for delivery - notifying admin and motoboy');
+      soundContext.playSoundForEvent('order_delivering', order.id, 'admin');
+      soundContext.playSoundForEvent('motoboy_assigned', order.id, 'motoboy');
+    }
+
+    // Order delivered
+    if (order.status === 'delivered' && oldStatus !== 'delivered') {
+      console.log('[Order] Order delivered - notifying admin');
+      soundContext.playSoundForEvent('order_delivered', order.id, 'admin');
+    }
+
+    // Order cancelled - notify all panels
+    if (order.status === 'cancelled' && oldStatus !== 'cancelled') {
+      console.log('[Order] Order cancelled - notifying all panels');
+      soundContext.playSoundForEvent('order_cancelled', order.id, 'admin');
+      soundContext.playSoundForEvent('order_cancelled', order.id, 'kitchen');
+      soundContext.stopKitchenRepeat();
+    }
+
+    // Stop kitchen repeat when order moves past pending/preparing/confirmed
+    if (!['pending', 'preparing', 'confirmed'].includes(order.status)) {
       soundContext.stopKitchenRepeat();
     }
   }, [soundContext]);
@@ -75,6 +135,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       // Use a small delay to ensure we're past the initial load
       const timer = setTimeout(() => {
         initialLoadRef.current = false;
+        console.log('[Order] Initial load complete, sounds enabled');
       }, 1000);
       return () => clearTimeout(timer);
     }
