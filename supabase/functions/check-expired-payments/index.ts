@@ -16,8 +16,8 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get timeout minutes from request body or default to 30
-    let timeoutMinutes = 30;
+    // Get timeout minutes from request body or default to 5
+    let timeoutMinutes = 5;
     try {
       const body = await req.json();
       if (body.timeoutMinutes) {

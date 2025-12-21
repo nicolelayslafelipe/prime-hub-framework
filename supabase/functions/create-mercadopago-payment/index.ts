@@ -65,11 +65,16 @@ serve(async (req) => {
     let paymentResult;
 
     if (payment_type === 'pix') {
+      // Calculate expiration: 5 minutes from now
+      const expirationDate = new Date();
+      expirationDate.setMinutes(expirationDate.getMinutes() + 5);
+
       // Create PIX payment
       const pixPayload = {
         transaction_amount: amount,
         description: description || `Pedido #${order.order_number}`,
         payment_method_id: 'pix',
+        date_of_expiration: expirationDate.toISOString(),
         payer: {
           email: customer_email || 'cliente@delivery.com',
         },
