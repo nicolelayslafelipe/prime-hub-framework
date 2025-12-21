@@ -238,6 +238,99 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_registers: {
+        Row: {
+          closed_at: string | null
+          closing_amount: number | null
+          created_at: string | null
+          difference: number | null
+          expected_amount: number | null
+          id: string
+          notes: string | null
+          opened_at: string
+          opening_amount: number
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closing_amount?: number | null
+          created_at?: string | null
+          difference?: number | null
+          expected_amount?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_amount?: number
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          closing_amount?: number | null
+          created_at?: string | null
+          difference?: number | null
+          expected_amount?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_amount?: number
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cash_transactions: {
+        Row: {
+          amount: number
+          cash_register_id: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          order_id: string | null
+          payment_method: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          cash_register_id: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          payment_method: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          cash_register_id?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          payment_method?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_transactions_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string | null
@@ -644,6 +737,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          cash_register_id: string | null
           change_amount: number | null
           change_for: number | null
           coupon_code: string | null
@@ -665,14 +759,17 @@ export type Database = {
           needs_change: boolean | null
           notes: string | null
           order_number: number
+          order_type: string | null
           payment_method: string
           payment_status: string | null
           status: string
           subtotal: number
+          table_number: string | null
           total: number
           updated_at: string | null
         }
         Insert: {
+          cash_register_id?: string | null
           change_amount?: number | null
           change_for?: number | null
           coupon_code?: string | null
@@ -694,14 +791,17 @@ export type Database = {
           needs_change?: boolean | null
           notes?: string | null
           order_number?: number
+          order_type?: string | null
           payment_method: string
           payment_status?: string | null
           status?: string
           subtotal: number
+          table_number?: string | null
           total: number
           updated_at?: string | null
         }
         Update: {
+          cash_register_id?: string | null
           change_amount?: number | null
           change_for?: number | null
           coupon_code?: string | null
@@ -723,14 +823,24 @@ export type Database = {
           needs_change?: boolean | null
           notes?: string | null
           order_number?: number
+          order_type?: string | null
           payment_method?: string
           payment_status?: string | null
           status?: string
           subtotal?: number
+          table_number?: string | null
           total?: number
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_methods: {
         Row: {

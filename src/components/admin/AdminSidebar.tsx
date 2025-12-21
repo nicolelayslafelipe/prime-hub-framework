@@ -36,6 +36,7 @@ import {
   Palette,
   Ticket,
   BarChart3,
+  Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -64,6 +65,7 @@ const menuGroups: MenuGroup[] = [
     defaultOpen: true,
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
+      { icon: Monitor, label: 'PDV', path: '/admin/pdv' },
       { icon: Kanban, label: 'Kanban', path: '/admin/kanban', badge: true },
       { icon: ShoppingBag, label: 'Pedidos', path: '/admin/orders' },
       { icon: UserCircle, label: 'Clientes', path: '/admin/clients' },
