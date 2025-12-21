@@ -1,12 +1,13 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useOrders } from '@/contexts/OrderContext';
 import { useSound } from '@/contexts/SoundContext';
-import { OrderColumn } from '@/components/admin/OrderColumn';
+import { DraggableOrderColumn } from '@/components/admin/DraggableOrderColumn';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
 import { SoundIndicator } from '@/components/shared/SoundIndicator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { OrderStatus } from '@/types';
+import { OrderStatus, Order } from '@/types';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
 
 const columns: { status: OrderStatus; title: string }[] = [
   { status: 'pending', title: 'Pendentes' },
@@ -14,17 +15,6 @@ const columns: { status: OrderStatus; title: string }[] = [
   { status: 'ready', title: 'Prontos' },
   { status: 'out_for_delivery', title: 'Em Entrega' },
 ];
-
-const statusFlow: Record<OrderStatus, OrderStatus | null> = {
-  waiting_payment: 'pending',
-  pending: 'preparing',
-  confirmed: 'preparing',
-  preparing: 'ready',
-  ready: 'out_for_delivery',
-  out_for_delivery: 'delivered',
-  delivered: null,
-  cancelled: null,
-};
 
 function ColumnSkeleton() {
   return (
@@ -45,6 +35,10 @@ export default function AdminOrders() {
   // Track recently moved orders for animation
   const [recentlyMovedOrders, setRecentlyMovedOrders] = useState<Set<string>>(new Set());
   const previousOrderStatusRef = useRef<Map<string, OrderStatus>>(new Map());
+
+  // Drag and drop state
+  const [draggedOrder, setDraggedOrder] = useState<Order | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<OrderStatus | null>(null);
 
   // Detect status changes and mark orders as recently moved
   useEffect(() => {
@@ -74,15 +68,68 @@ export default function AdminOrders() {
 
   const handleUpdateStatus = useCallback(async (orderId: string) => {
     const order = orders.find((o) => o.id === orderId);
-    if (order && statusFlow[order.status]) {
+    if (!order) return;
+
+    const statusFlow: Record<OrderStatus, OrderStatus | null> = {
+      waiting_payment: 'pending',
+      pending: 'preparing',
+      confirmed: 'preparing',
+      preparing: 'ready',
+      ready: 'out_for_delivery',
+      out_for_delivery: 'delivered',
+      delivered: null,
+      cancelled: null,
+    };
+
+    if (statusFlow[order.status]) {
       await updateOrderStatus(orderId, statusFlow[order.status]!);
     }
+  }, [orders, updateOrderStatus]);
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent, status: OrderStatus) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    // Get the dragged order from dataTransfer
+    const orderId = e.dataTransfer.getData('text/plain');
+    if (orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        setDraggedOrder(order);
+      }
+    }
+    
+    setDragOverColumn(status);
+  }, [orders]);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverColumn(null);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent, newStatus: OrderStatus) => {
+    e.preventDefault();
+    
+    const orderId = e.dataTransfer.getData('text/plain');
+    const order = orders.find(o => o.id === orderId);
+    
+    if (order && order.status !== newStatus) {
+      try {
+        await updateOrderStatus(order.id, newStatus);
+        toast.success(`Pedido #${order.orderNumber} movido para ${columns.find(c => c.status === newStatus)?.title}`);
+      } catch (error) {
+        toast.error('Erro ao mover pedido');
+      }
+    }
+    
+    setDraggedOrder(null);
+    setDragOverColumn(null);
   }, [orders, updateOrderStatus]);
 
   return (
     <AdminLayout 
       title="Pedidos" 
-      subtitle="Gestão de pedidos em tempo real"
+      subtitle="Gestão de pedidos em tempo real • Arraste para mover"
       headerRight={
         <div className="flex items-center gap-3">
           <SoundIndicator 
@@ -105,13 +152,17 @@ export default function AdminOrders() {
           </>
         ) : (
           columns.map((column) => (
-            <OrderColumn
+            <DraggableOrderColumn
               key={column.status}
               status={column.status}
               title={column.title}
               orders={getOrdersByStatus(column.status)}
               onUpdateStatus={handleUpdateStatus}
               recentlyMovedOrders={recentlyMovedOrders}
+              isDragOver={dragOverColumn === column.status}
+              onDragOver={(e) => handleDragOver(e, column.status)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, column.status)}
             />
           ))
         )}
