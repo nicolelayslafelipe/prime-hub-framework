@@ -188,12 +188,49 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_zones: {
+        Row: {
+          created_at: string | null
+          estimated_time: number | null
+          fee: number | null
+          id: string
+          is_active: boolean | null
+          min_order: number | null
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          estimated_time?: number | null
+          fee?: number | null
+          id?: string
+          is_active?: boolean | null
+          min_order?: number | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          estimated_time?: number | null
+          fee?: number | null
+          id?: string
+          is_active?: boolean | null
+          min_order?: number | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       establishment_settings: {
         Row: {
           address: string | null
           banner: string | null
           banner_text: string | null
           created_at: string | null
+          delivery_area: string | null
           delivery_fee: number | null
           description: string | null
           estimated_delivery_time: number | null
@@ -213,6 +250,7 @@ export type Database = {
           banner?: string | null
           banner_text?: string | null
           created_at?: string | null
+          delivery_area?: string | null
           delivery_fee?: number | null
           description?: string | null
           estimated_delivery_time?: number | null
@@ -232,6 +270,7 @@ export type Database = {
           banner?: string | null
           banner_text?: string | null
           created_at?: string | null
+          delivery_area?: string | null
           delivery_fee?: number | null
           description?: string | null
           estimated_delivery_time?: number | null
