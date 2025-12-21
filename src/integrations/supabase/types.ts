@@ -188,6 +188,39 @@ export type Database = {
         }
         Relationships: []
       }
+      client_preferences: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_payment_method: string | null
+          promo_notifications: boolean | null
+          push_notifications: boolean | null
+          save_payment_method: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_payment_method?: string | null
+          promo_notifications?: boolean | null
+          push_notifications?: boolean | null
+          save_payment_method?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_payment_method?: string | null
+          promo_notifications?: boolean | null
+          push_notifications?: boolean | null
+          save_payment_method?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       delivery_zones: {
         Row: {
           created_at: string | null
