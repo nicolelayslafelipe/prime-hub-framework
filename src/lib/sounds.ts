@@ -97,67 +97,97 @@ const SOUND_CONFIGS: Record<SoundType, {
 export class SoundPlayer {
   private audioContext: AudioContext | null = null;
   private currentOscillators: OscillatorNode[] = [];
+  private isInitialized = false;
 
-  private getAudioContext(): AudioContext {
+  private async getAudioContext(): Promise<AudioContext> {
     if (!this.audioContext || this.audioContext.state === 'closed') {
       this.audioContext = new AudioContext();
     }
     if (this.audioContext.state === 'suspended') {
-      this.audioContext.resume();
+      try {
+        await this.audioContext.resume();
+        console.log('AudioContext resumed successfully');
+      } catch (error) {
+        console.warn('Could not resume AudioContext:', error);
+      }
     }
+    this.isInitialized = true;
     return this.audioContext;
   }
 
-  public playSound(soundType: SoundType, volume: number = 0.7): void {
+  // Must be called after user interaction to enable audio
+  public async initialize(): Promise<boolean> {
     try {
-      const audioContext = this.getAudioContext();
-      const config = SOUND_CONFIGS[soundType];
-      const now = audioContext.currentTime;
-
-      // Stop any currently playing sounds
-      this.stopCurrentSounds();
-
-      config.frequencies.forEach((frequency, index) => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        const masterGain = audioContext.createGain();
-
-        oscillator.type = config.type;
-        oscillator.frequency.setValueAtTime(frequency, now);
-
-        const { attack, decay, sustain, release } = config.gainEnvelope;
-        const startTime = now + config.delays[index];
-        const duration = config.durations[index];
-
-        // ADSR envelope
-        gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(1, startTime + attack);
-        gainNode.gain.linearRampToValueAtTime(sustain, startTime + attack + decay);
-        gainNode.gain.setValueAtTime(sustain, startTime + duration - release);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-
-        // Master volume
-        masterGain.gain.setValueAtTime(volume * 0.5, now);
-
-        oscillator.connect(gainNode);
-        gainNode.connect(masterGain);
-        masterGain.connect(audioContext.destination);
-
-        oscillator.start(startTime);
-        oscillator.stop(startTime + duration + 0.1);
-
-        this.currentOscillators.push(oscillator);
-
-        oscillator.onended = () => {
-          const idx = this.currentOscillators.indexOf(oscillator);
-          if (idx > -1) {
-            this.currentOscillators.splice(idx, 1);
-          }
-        };
-      });
+      const ctx = await this.getAudioContext();
+      // Play a silent sound to unlock audio
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      gainNode.gain.setValueAtTime(0, ctx.currentTime);
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.001);
+      console.log('SoundPlayer initialized, AudioContext state:', ctx.state);
+      return true;
     } catch (error) {
-      console.warn('Could not play sound:', error);
+      console.warn('Failed to initialize SoundPlayer:', error);
+      return false;
     }
+  }
+
+  public playSound(soundType: SoundType, volume: number = 0.7): void {
+    // Fire and forget - we use the sync path internally
+    this.playSoundAsync(soundType, volume).catch((error) => {
+      console.warn('Could not play sound:', error);
+    });
+  }
+
+  private async playSoundAsync(soundType: SoundType, volume: number): Promise<void> {
+    const audioContext = await this.getAudioContext();
+    const config = SOUND_CONFIGS[soundType];
+    const now = audioContext.currentTime;
+
+    // Stop any currently playing sounds
+    this.stopCurrentSounds();
+
+    config.frequencies.forEach((frequency, index) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      const masterGain = audioContext.createGain();
+
+      oscillator.type = config.type;
+      oscillator.frequency.setValueAtTime(frequency, now);
+
+      const { attack, decay, sustain, release } = config.gainEnvelope;
+      const startTime = now + config.delays[index];
+      const duration = config.durations[index];
+
+      // ADSR envelope
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(1, startTime + attack);
+      gainNode.gain.linearRampToValueAtTime(sustain, startTime + attack + decay);
+      gainNode.gain.setValueAtTime(sustain, startTime + duration - release);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+
+      // Master volume
+      masterGain.gain.setValueAtTime(volume * 0.5, now);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(masterGain);
+      masterGain.connect(audioContext.destination);
+
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration + 0.1);
+
+      this.currentOscillators.push(oscillator);
+
+      oscillator.onended = () => {
+        const idx = this.currentOscillators.indexOf(oscillator);
+        if (idx > -1) {
+          this.currentOscillators.splice(idx, 1);
+        }
+      };
+    });
   }
 
   public stopCurrentSounds(): void {
