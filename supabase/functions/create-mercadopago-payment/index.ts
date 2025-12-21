@@ -47,6 +47,46 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Verificar se estabelecimento está aberto
+    const { data: establishmentSettings, error: settingsError } = await supabase
+      .from('establishment_settings')
+      .select('is_open')
+      .limit(1)
+      .single();
+
+    if (settingsError) {
+      console.error('Error fetching establishment settings:', settingsError);
+    }
+
+    if (establishmentSettings && !establishmentSettings.is_open) {
+      console.log('Establishment is closed, rejecting payment');
+      return new Response(
+        JSON.stringify({ error: 'Estabelecimento fechado no momento' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verificar se método de pagamento está ativo
+    const paymentTypeDB = payment_type === 'pix' ? 'pix' : 'credit';
+    const { data: paymentMethodActive, error: methodError } = await supabase
+      .from('payment_methods')
+      .select('is_active')
+      .eq('type', paymentTypeDB)
+      .limit(1)
+      .single();
+
+    if (methodError) {
+      console.error('Error fetching payment method:', methodError);
+    }
+
+    if (paymentMethodActive && !paymentMethodActive.is_active) {
+      console.log(`Payment method ${payment_type} is disabled, rejecting payment`);
+      return new Response(
+        JSON.stringify({ error: 'Forma de pagamento desativada' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get order details
     const { data: order, error: orderError } = await supabase
       .from('orders')
