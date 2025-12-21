@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClientAddresses, ClientAddress } from '@/hooks/useClientAddresses';
 import { useClientPreferences } from '@/hooks/useClientPreferences';
 import { useCepSearch } from '@/hooks/useCepSearch';
+import { supabase } from '@/integrations/supabase/client';
 import { formatCepForDisplay, formatCep } from '@/lib/cep';
 import { toast } from 'sonner';
 import { 
@@ -252,6 +253,53 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     }
   };
 
+  // Salvar endereço automaticamente no banco
+  const saveNewAddressToDatabase = async () => {
+    if (!user || !showNewAddressForm) return;
+    
+    try {
+      // Verificar se já existe um endereço com o mesmo CEP e número
+      const { data: existingAddresses } = await supabase
+        .from('addresses')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('zip_code', newAddress.zip_code)
+        .eq('number', newAddress.number);
+      
+      // Se já existe, não salvar duplicado
+      if (existingAddresses && existingAddresses.length > 0) {
+        return;
+      }
+      
+      // Se não há endereços salvos, definir como padrão
+      const isFirstAddress = addresses.length === 0;
+      
+      const { error } = await supabase
+        .from('addresses')
+        .insert({
+          user_id: user.id,
+          label: 'Casa',
+          street: newAddress.street,
+          number: newAddress.number,
+          complement: newAddress.complement || null,
+          neighborhood: newAddress.neighborhood,
+          city: newAddress.city,
+          state: newAddress.state,
+          zip_code: newAddress.zip_code,
+          is_default: isFirstAddress,
+        });
+      
+      if (error) {
+        console.error('Error saving address:', error);
+      } else {
+        // Atualizar lista de endereços para próximo uso
+        refetchAddresses();
+      }
+    } catch (error) {
+      console.error('Error saving address:', error);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     // Check if user is authenticated
     if (!user) {
@@ -272,6 +320,11 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     // Save payment method preference
     if (preferences?.save_payment_method) {
       await updatePreference('last_payment_method', paymentMethod);
+    }
+
+    // Salvar endereço automaticamente se for novo
+    if (showNewAddressForm) {
+      saveNewAddressToDatabase();
     }
 
     const orderNumber = 1000 + orders.length + 1;
