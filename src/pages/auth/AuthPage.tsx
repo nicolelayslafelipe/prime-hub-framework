@@ -49,36 +49,37 @@ export default function AuthPage() {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [signupErrors, setSignupErrors] = useState<Record<string, string>>({});
 
-  // Redirect if already logged in
-  useEffect(() => {
-    if (user && role && !authLoading) {
-      redirectByRole(role);
-    }
-  }, [user, role, authLoading]);
-
   const redirectByRole = (userRole: string) => {
     const pendingCheckout = localStorage.getItem('pendingCheckout');
 
-    if (pendingCheckout) {
+    // Only check pendingCheckout for client role
+    if (userRole === 'client' && pendingCheckout) {
       localStorage.removeItem('pendingCheckout');
-      navigate('/');
+      navigate('/', { replace: true });
       return;
     }
 
     switch (userRole) {
       case 'admin':
-        navigate('/admin');
+        navigate('/admin', { replace: true });
         break;
       case 'kitchen':
-        navigate('/kitchen');
+        navigate('/kitchen', { replace: true });
         break;
       case 'motoboy':
-        navigate('/motoboy');
+        navigate('/motoboy', { replace: true });
         break;
       default:
-        navigate('/');
+        navigate('/', { replace: true });
     }
   };
+
+  // Redirect if already logged in - immediate check
+  useEffect(() => {
+    if (!authLoading && user && role) {
+      redirectByRole(role);
+    }
+  }, [user, role, authLoading]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
