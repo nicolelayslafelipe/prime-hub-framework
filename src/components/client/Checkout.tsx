@@ -171,22 +171,36 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
       const addressData = await fetchAddressByCep(cep);
       
       if (addressData) {
+        // Update address fields with whatever data we received
         setNewAddress(prev => ({
           ...prev,
-          street: addressData.street,
-          neighborhood: addressData.neighborhood,
+          street: addressData.street || prev.street,
+          neighborhood: addressData.neighborhood || prev.neighborhood,
           city: addressData.city,
           state: addressData.state,
         }));
         setCepFound(true);
-        toast.success('Endereço encontrado!');
         
-        // Focus on number field
-        setTimeout(() => {
-          document.getElementById('checkout-number')?.focus();
-        }, 100);
+        if (addressData.isPartial) {
+          // Generic city CEP - user needs to fill street and neighborhood
+          toast.info('CEP de cidade encontrado', {
+            description: 'Preencha a rua e o bairro manualmente',
+          });
+          // Focus on street field for partial CEPs
+          setTimeout(() => {
+            document.getElementById('checkout-street')?.focus();
+          }, 100);
+        } else {
+          toast.success('Endereço encontrado!');
+          // Focus on number field for complete CEPs
+          setTimeout(() => {
+            document.getElementById('checkout-number')?.focus();
+          }, 100);
+        }
       } else {
-        toast.error('CEP não encontrado');
+        toast.error('CEP não encontrado', {
+          description: 'Verifique o CEP digitado',
+        });
       }
     } catch {
       toast.error('Erro ao buscar CEP');

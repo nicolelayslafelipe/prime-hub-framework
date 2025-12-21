@@ -15,6 +15,7 @@ export interface AddressFromCep {
   neighborhood: string;
   city: string;
   state: string;
+  isPartial: boolean; // Indicates if it's a generic city CEP (no street/neighborhood)
 }
 
 /**
@@ -66,11 +67,15 @@ export async function fetchAddressByCep(cep: string): Promise<AddressFromCep | n
       return null;
     }
 
+    // CEP found - check if it's a generic city CEP (no street data)
+    const isPartial = !data.logradouro || !data.bairro;
+    
     return {
       street: data.logradouro || '',
       neighborhood: data.bairro || '',
       city: data.localidade || '',
       state: data.uf || '',
+      isPartial,
     };
   } catch (error) {
     console.error('Error fetching address from CEP:', error);
