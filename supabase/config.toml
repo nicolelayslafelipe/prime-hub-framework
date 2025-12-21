@@ -34,3 +34,6 @@ verify_jwt = false
 
 [functions.mercadopago-webhook]
 verify_jwt = false
+
+[functions.check-expired-payments]
+verify_jwt = false

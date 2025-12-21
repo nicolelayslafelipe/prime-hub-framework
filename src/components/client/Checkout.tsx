@@ -138,6 +138,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   // Payment modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [currentOrderNumber, setCurrentOrderNumber] = useState<number | null>(null);
   const [currentPaymentType, setCurrentPaymentType] = useState<'pix' | 'card'>('pix');
 
   // Reset new address form
@@ -504,6 +505,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
       if (isOnlinePayment) {
         const paymentType = paymentMethod === 'pix_online' ? 'pix' : 'card';
         setCurrentOrderId(orderData.id);
+        setCurrentOrderNumber(orderData.order_number);
         setCurrentPaymentType(paymentType);
 
         const result = await createPayment({
@@ -600,6 +602,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     resetPayment();
     setShowPaymentModal(false);
     setCurrentOrderId(null);
+    setCurrentOrderNumber(null);
     onClose();
   };
 
@@ -1118,6 +1121,8 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         orderId={currentOrderId}
+        orderNumber={currentOrderNumber || undefined}
+        amount={total}
         paymentType={currentPaymentType}
         qrCode={paymentResult?.qr_code}
         qrCodeBase64={paymentResult?.qr_code_base64}

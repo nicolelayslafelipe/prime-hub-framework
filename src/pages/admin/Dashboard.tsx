@@ -18,6 +18,7 @@ import {
 import { OrderStatus } from '@/types';
 
 const statusFlow: Record<OrderStatus, OrderStatus | null> = {
+  waiting_payment: 'pending',
   pending: 'confirmed',
   confirmed: 'preparing',
   preparing: 'ready',

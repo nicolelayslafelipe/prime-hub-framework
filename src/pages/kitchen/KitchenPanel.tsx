@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 const kitchenStatuses: OrderStatus[] = ['pending', 'preparing', 'ready'];
 
 const statusFlow: Record<OrderStatus, OrderStatus | null> = {
+  waiting_payment: null,
   pending: 'preparing',
   confirmed: 'preparing',
   preparing: 'ready',
@@ -27,6 +28,7 @@ const statusFlow: Record<OrderStatus, OrderStatus | null> = {
 };
 
 const statusActions: Record<OrderStatus, string> = {
+  waiting_payment: '',
   pending: 'Iniciar Preparo',
   preparing: 'Marcar Pronto',
   ready: 'Aguardando Entrega',
