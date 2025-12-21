@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { useConfig } from '@/contexts/ConfigContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,6 +33,7 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, role, signIn, signUp, loading: authLoading } = useAuth();
+  const { config } = useConfig();
 
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'login');
   const [isLoading, setIsLoading] = useState(false);
@@ -48,6 +50,19 @@ export default function AuthPage() {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [signupErrors, setSignupErrors] = useState<Record<string, string>>({});
+
+  // Dynamic background image - Priority: Banner > Logo > null
+  const backgroundImage = useMemo(() => {
+    if (config.establishment.useBannerAsLoginBg !== false) {
+      if (config.establishment.banner) {
+        return config.establishment.banner;
+      }
+      if (config.establishment.logo) {
+        return config.establishment.logo;
+      }
+    }
+    return null;
+  }, [config.establishment.banner, config.establishment.logo, config.establishment.useBannerAsLoginBg]);
 
   const redirectByRole = (userRole: string) => {
     const pendingCheckout = localStorage.getItem('pendingCheckout');
@@ -161,12 +176,23 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
+      {/* Dynamic Background Image */}
+      {backgroundImage && (
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
+          style={{ backgroundImage: `url(${backgroundImage})` }}
+        />
+      )}
+      
+      {/* Overlay with Gradient - Adaptive to theme */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background/90 dark:from-black/80 dark:via-black/60 dark:to-black/90 backdrop-blur-[2px]" />
+
       {/* Header */}
-      <header className="border-b border-border bg-background/95 backdrop-blur-sm">
+      <header className="relative z-10 border-b border-border/40 bg-background/30 backdrop-blur-md">
         <div className="flex items-center justify-between px-4 md:px-6 h-16">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild>
+            <Button variant="ghost" size="icon" asChild className="hover:bg-background/50">
               <Link to="/">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
@@ -178,14 +204,20 @@ export default function AuthPage() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 flex items-center justify-center p-4">
+      <div className="relative z-10 flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold mb-2">Bem-vindo</h1>
-            <p className="text-muted-foreground">Entre ou crie sua conta para continuar</p>
-          </div>
+          {/* Modern Card with Glass Effect */}
+          <div className="bg-background/90 dark:bg-background/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-border/50 p-6 md:p-8">
+            {/* Logo inside card */}
+            <div className="flex justify-center mb-6">
+              <Logo size="lg" />
+            </div>
+            
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold mb-2">Bem-vindo</h1>
+              <p className="text-muted-foreground text-sm">Entre ou crie sua conta para continuar</p>
+            </div>
 
-          <div className="card-premium p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="login">Entrar</TabsTrigger>

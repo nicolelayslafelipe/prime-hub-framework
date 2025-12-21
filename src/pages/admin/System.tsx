@@ -19,7 +19,8 @@ import {
   Truck,
   Star,
   Phone,
-  DollarSign
+  DollarSign,
+  LogIn
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,6 +55,7 @@ export default function AdminSystem() {
   // Banner
   const [banner, setBanner] = useState('');
   const [bannerText, setBannerText] = useState('');
+  const [useBannerAsLoginBg, setUseBannerAsLoginBg] = useState(true);
   const [showBanner, setShowBanner] = useState(false);
   
   const [isSaving, setIsSaving] = useState(false);
@@ -78,6 +80,7 @@ export default function AdminSystem() {
       setBanner(config.establishment.banner || '');
       setBannerText(config.establishment.bannerText || '');
       setShowBanner(config.establishment.showBanner || false);
+      setUseBannerAsLoginBg(config.establishment.useBannerAsLoginBg ?? true);
     }
   }, [isLoading, config.establishment]);
 
@@ -102,6 +105,7 @@ export default function AdminSystem() {
         banner,
         bannerText,
         showBanner,
+        useBannerAsLoginBg,
       });
       toast.success('Configurações salvas com sucesso!');
       setSaved(true);
@@ -432,6 +436,23 @@ export default function AdminSystem() {
               onChange={e => setBannerText(e.target.value)} 
               placeholder="Ex: 🔥 Promoção de Inauguração! 20% OFF em todos os burgers"
               rows={2}
+            />
+          </div>
+
+          {/* Login Background Toggle */}
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div className="flex items-center gap-3">
+              <LogIn className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <span className="font-medium">Fundo da Tela de Login</span>
+                <p className="text-xs text-muted-foreground">
+                  Usar banner/logo como imagem de fundo na tela de login
+                </p>
+              </div>
+            </div>
+            <Switch 
+              checked={useBannerAsLoginBg} 
+              onCheckedChange={setUseBannerAsLoginBg} 
             />
           </div>
         </div>
