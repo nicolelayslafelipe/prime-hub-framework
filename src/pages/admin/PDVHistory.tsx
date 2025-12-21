@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { useCashRegister } from '@/hooks/useCashRegister';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
+import { CashRegisterDetails } from '@/components/admin/pdv/CashRegisterDetails';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { DollarSign, Clock, User, AlertTriangle, CheckCircle } from 'lucide-react';
+import { DollarSign, Clock, User, AlertTriangle, CheckCircle, Trash2, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface CashRegisterRecord {
   id: string;
@@ -30,40 +33,73 @@ interface CashRegisterWithUser extends CashRegisterRecord {
 export default function PDVHistory() {
   const [registers, setRegisters] = useState<CashRegisterWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedRegister, setSelectedRegister] = useState<CashRegisterWithUser | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CashRegisterWithUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    async function fetchHistory() {
-      try {
-        const { data, error } = await supabase
-          .from('cash_registers')
-          .select('*')
-          .order('opened_at', { ascending: false })
-          .limit(50);
-
-        if (error) throw error;
-
-        // Fetch user names
-        const userIds = [...new Set((data || []).map(r => r.user_id))];
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, name')
-          .in('id', userIds);
-
-        const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
-
-        setRegisters((data || []).map(r => ({
-          ...r,
-          userName: profileMap.get(r.user_id) || 'Usuário',
-        })) as CashRegisterWithUser[]);
-      } catch (err) {
-        console.error('Error fetching cash register history:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     fetchHistory();
   }, []);
+
+  async function fetchHistory() {
+    try {
+      const { data, error } = await supabase
+        .from('cash_registers')
+        .select('*')
+        .order('opened_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      // Fetch user names
+      const userIds = [...new Set((data || []).map(r => r.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
+
+      setRegisters((data || []).map(r => ({
+        ...r,
+        userName: profileMap.get(r.user_id) || 'Usuário',
+      })) as CashRegisterWithUser[]);
+    } catch (err) {
+      console.error('Error fetching cash register history:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete transactions first (cascade should handle this but being explicit)
+      await supabase
+        .from('cash_transactions')
+        .delete()
+        .eq('cash_register_id', deleteTarget.id);
+
+      // Delete the register
+      const { error } = await supabase
+        .from('cash_registers')
+        .delete()
+        .eq('id', deleteTarget.id);
+
+      if (error) throw error;
+
+      setRegisters(prev => prev.filter(r => r.id !== deleteTarget.id));
+      toast.success('Caixa excluído com sucesso');
+    } catch (err) {
+      console.error('Error deleting cash register:', err);
+      toast.error('Erro ao excluir caixa');
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
+  }
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -105,9 +141,14 @@ export default function PDVHistory() {
           </Card>
         ) : (
           registers.map((register) => (
-            <Card key={register.id} className={cn(
-              register.status === 'open' && 'border-accent'
-            )}>
+            <Card 
+              key={register.id} 
+              className={cn(
+                "cursor-pointer hover:shadow-md transition-shadow",
+                register.status === 'open' && 'border-accent'
+              )}
+              onClick={() => setSelectedRegister(register)}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -118,26 +159,52 @@ export default function PDVHistory() {
                       {register.status === 'open' ? 'Aberto' : 'Fechado'}
                     </Badge>
                   </div>
-                  {register.difference !== null && (
-                    <Badge 
-                      variant="outline"
-                      className={cn(
-                        register.difference === 0 
-                          ? 'bg-accent/10 text-accent border-accent/30' 
-                          : register.difference > 0
-                          ? 'bg-accent/10 text-accent border-accent/30'
-                          : 'bg-destructive/10 text-destructive border-destructive/30'
-                      )}
+                  <div className="flex items-center gap-2">
+                    {register.difference !== null && (
+                      <Badge 
+                        variant="outline"
+                        className={cn(
+                          register.difference === 0 
+                            ? 'bg-accent/10 text-accent border-accent/30' 
+                            : register.difference > 0
+                            ? 'bg-accent/10 text-accent border-accent/30'
+                            : 'bg-destructive/10 text-destructive border-destructive/30'
+                        )}
+                      >
+                        {register.difference === 0 ? (
+                          <><CheckCircle className="h-3 w-3 mr-1" /> Conferido</>
+                        ) : register.difference > 0 ? (
+                          <>Sobra: {formatPrice(register.difference)}</>
+                        ) : (
+                          <><AlertTriangle className="h-3 w-3 mr-1" /> Falta: {formatPrice(Math.abs(register.difference))}</>
+                        )}
+                      </Badge>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedRegister(register);
+                      }}
                     >
-                      {register.difference === 0 ? (
-                        <><CheckCircle className="h-3 w-3 mr-1" /> Conferido</>
-                      ) : register.difference > 0 ? (
-                        <>Sobra: {formatPrice(register.difference)}</>
-                      ) : (
-                        <><AlertTriangle className="h-3 w-3 mr-1" /> Falta: {formatPrice(Math.abs(register.difference))}</>
-                      )}
-                    </Badge>
-                  )}
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {register.status === 'closed' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(register);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -179,6 +246,24 @@ export default function PDVHistory() {
           ))
         )}
       </div>
+
+      {/* Details Modal */}
+      <CashRegisterDetails
+        open={!!selectedRegister}
+        onClose={() => setSelectedRegister(null)}
+        register={selectedRegister}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={() => setDeleteTarget(null)}
+        title="Excluir Caixa"
+        description={`Deseja excluir o registro de caixa de ${deleteTarget ? formatDateTime(deleteTarget.opened_at) : ''}? Esta ação é irreversível e todas as transações associadas serão excluídas.`}
+        confirmText="Excluir"
+        onConfirm={handleDelete}
+        variant="destructive"
+      />
     </AdminLayout>
   );
 }
