@@ -40,3 +40,9 @@ verify_jwt = false
 
 [functions.send-push-notification]
 verify_jwt = false
+
+[functions.update-payment-credentials]
+verify_jwt = true
+
+[functions.test-payment-connection]
+verify_jwt = true
