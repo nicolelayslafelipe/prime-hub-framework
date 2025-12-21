@@ -281,6 +281,7 @@ export type Database = {
           is_delivery_enabled: boolean | null
           is_open: boolean | null
           logo: string | null
+          max_delivery_radius: number | null
           min_distance_included: number | null
           min_order_value: number | null
           name: string
@@ -307,6 +308,7 @@ export type Database = {
           is_delivery_enabled?: boolean | null
           is_open?: boolean | null
           logo?: string | null
+          max_delivery_radius?: number | null
           min_distance_included?: number | null
           min_order_value?: number | null
           name?: string
@@ -333,6 +335,7 @@ export type Database = {
           is_delivery_enabled?: boolean | null
           is_open?: boolean | null
           logo?: string | null
+          max_delivery_radius?: number | null
           min_distance_included?: number | null
           min_order_value?: number | null
           name?: string
