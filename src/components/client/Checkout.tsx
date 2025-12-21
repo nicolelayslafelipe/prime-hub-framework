@@ -700,9 +700,17 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   // Verificar se estabelecimento está aberto
   const isEstablishmentOpen = config.establishment.isOpen;
 
+  // Validação de telefone brasileiro (10-11 dígitos)
+  const isValidBrazilianPhone = (phone: string): boolean => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    return cleanPhone.length >= 10 && cleanPhone.length <= 11;
+  };
+
+  const isPhoneValid = isValidBrazilianPhone(customerPhone);
+
   const canPlaceOrder = 
     items.length > 0 && 
-    customerPhone.trim().length > 0 &&
+    isPhoneValid &&
     isAddressValid() && 
     !isOutsideDeliveryArea &&
     isEstablishmentOpen &&
@@ -799,8 +807,18 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                       placeholder="(00) 00000-0000"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="bg-secondary/50"
+                      className={`bg-secondary/50 ${
+                        customerPhone.trim().length > 0 && !isPhoneValid 
+                          ? 'border-destructive focus-visible:ring-destructive' 
+                          : ''
+                      }`}
                     />
+                    {customerPhone.trim().length > 0 && !isPhoneValid && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Telefone inválido (digite 10-11 dígitos)
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

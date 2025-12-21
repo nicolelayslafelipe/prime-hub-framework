@@ -6,18 +6,40 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useConfig } from '@/contexts/ConfigContext';
+import { useAdminSettings } from '@/hooks/useAdminSettings';
+import { Link } from 'react-router-dom';
 import { 
   Store, 
   Palette, 
   Bell, 
   Puzzle, 
   Clock,
-  Save,
-  Upload
+  Upload,
+  Volume2,
+  ExternalLink
 } from 'lucide-react';
 
+interface NotificationSettings {
+  newOrderSound: boolean;
+  orderStatusSound: boolean;
+  emailNotifications: boolean;
+  whatsappNotifications: boolean;
+}
+
+const defaultNotificationSettings: NotificationSettings = {
+  newOrderSound: true,
+  orderStatusSound: true,
+  emailNotifications: false,
+  whatsappNotifications: false,
+};
+
 export default function AdminSettings() {
-  const { config, updateEstablishment, updateNotifications, updateModules } = useConfig();
+  const { config, updateEstablishment } = useConfig();
+  const { 
+    value: notificationSettings, 
+    updateField: updateNotificationField,
+    isSaving: isSavingNotifications 
+  } = useAdminSettings<NotificationSettings>('notification_settings', defaultNotificationSettings);
 
   return (
     <AdminLayout title="Configurações" subtitle="Personalize seu estabelecimento">
@@ -115,9 +137,11 @@ export default function AdminSettings() {
           <Card className="p-6 glass">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Horário de Funcionamento</h3>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Clock className="h-4 w-4" />
-                Configurar Horários
+              <Button variant="outline" size="sm" className="gap-2" asChild>
+                <Link to="/admin/business-hours">
+                  <Clock className="h-4 w-4" />
+                  Configurar Horários
+                </Link>
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -129,7 +153,21 @@ export default function AdminSettings() {
         {/* Theme Settings */}
         <TabsContent value="theme" className="space-y-6">
           <Card className="p-6 glass">
-            <h3 className="text-lg font-semibold mb-4">Identidade Visual</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Identidade Visual</h3>
+                <p className="text-sm text-muted-foreground">
+                  Personalize as cores e aparência do seu estabelecimento
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="gap-2" asChild>
+                <Link to="/admin/themes">
+                  <Palette className="h-4 w-4" />
+                  Gerenciar Temas
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -186,7 +224,21 @@ export default function AdminSettings() {
         {/* Notification Settings */}
         <TabsContent value="notifications" className="space-y-6">
           <Card className="p-6 glass">
-            <h3 className="text-lg font-semibold mb-4">Sons e Alertas</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Sons e Alertas</h3>
+                <p className="text-sm text-muted-foreground">
+                  Configure notificações sonoras e alertas do sistema
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="gap-2" asChild>
+                <Link to="/admin/sound-settings">
+                  <Volume2 className="h-4 w-4" />
+                  Configurações Avançadas
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 border-b border-border/50">
                 <div>
@@ -194,8 +246,9 @@ export default function AdminSettings() {
                   <p className="text-sm text-muted-foreground">Tocar som quando um novo pedido chegar</p>
                 </div>
                 <Switch
-                  checked={config.notifications.newOrderSound}
-                  onCheckedChange={(checked) => updateNotifications({ newOrderSound: checked })}
+                  checked={notificationSettings.newOrderSound}
+                  onCheckedChange={(checked) => updateNotificationField('newOrderSound', checked)}
+                  disabled={isSavingNotifications}
                 />
               </div>
               <div className="flex items-center justify-between py-3 border-b border-border/50">
@@ -204,8 +257,9 @@ export default function AdminSettings() {
                   <p className="text-sm text-muted-foreground">Tocar som quando o status de um pedido mudar</p>
                 </div>
                 <Switch
-                  checked={config.notifications.orderStatusSound}
-                  onCheckedChange={(checked) => updateNotifications({ orderStatusSound: checked })}
+                  checked={notificationSettings.orderStatusSound}
+                  onCheckedChange={(checked) => updateNotificationField('orderStatusSound', checked)}
+                  disabled={isSavingNotifications}
                 />
               </div>
               <div className="flex items-center justify-between py-3 border-b border-border/50">
@@ -214,8 +268,9 @@ export default function AdminSettings() {
                   <p className="text-sm text-muted-foreground">Receber emails sobre novos pedidos</p>
                 </div>
                 <Switch
-                  checked={config.notifications.emailNotifications}
-                  onCheckedChange={(checked) => updateNotifications({ emailNotifications: checked })}
+                  checked={notificationSettings.emailNotifications}
+                  onCheckedChange={(checked) => updateNotificationField('emailNotifications', checked)}
+                  disabled={isSavingNotifications}
                 />
               </div>
               <div className="flex items-center justify-between py-3">
@@ -224,8 +279,9 @@ export default function AdminSettings() {
                   <p className="text-sm text-muted-foreground">Receber mensagens no WhatsApp</p>
                 </div>
                 <Switch
-                  checked={config.notifications.whatsappNotifications}
-                  onCheckedChange={(checked) => updateNotifications({ whatsappNotifications: checked })}
+                  checked={notificationSettings.whatsappNotifications}
+                  onCheckedChange={(checked) => updateNotificationField('whatsappNotifications', checked)}
+                  disabled={isSavingNotifications}
                 />
               </div>
             </div>
@@ -241,10 +297,10 @@ export default function AdminSettings() {
             </p>
             <div className="grid gap-4 md:grid-cols-2">
               {[
-                { key: 'payments', title: 'Pagamentos Online', description: 'Aceite pagamentos via cartão e PIX', soon: true },
-                { key: 'loyalty', title: 'Programa de Fidelidade', description: 'Sistema de pontos e recompensas', soon: true },
+                { key: 'payments', title: 'Pagamentos Online', description: 'Aceite pagamentos via cartão e PIX', link: '/admin/payment-methods' },
+                { key: 'loyalty', title: 'Programa de Fidelidade', description: 'Sistema de pontos e recompensas', link: '/admin/loyalty' },
                 { key: 'promotions', title: 'Promoções', description: 'Cupons de desconto e ofertas', soon: true },
-                { key: 'reviews', title: 'Avaliações', description: 'Sistema de avaliação de pedidos', soon: true },
+                { key: 'reviews', title: 'Avaliações', description: 'Sistema de avaliação de pedidos', link: '/admin/reviews' },
                 { key: 'scheduling', title: 'Agendamento', description: 'Permitir agendamento de pedidos', soon: true },
                 { key: 'multipleAddresses', title: 'Múltiplos Endereços', description: 'Cliente pode salvar vários endereços', soon: true },
               ].map((module) => (
@@ -260,14 +316,15 @@ export default function AdminSettings() {
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">{module.description}</p>
+                      {module.link && !module.soon && (
+                        <Link 
+                          to={module.link} 
+                          className="text-xs text-primary hover:underline mt-2 inline-flex items-center gap-1"
+                        >
+                          Configurar <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      )}
                     </div>
-                    <Switch
-                      checked={config.modules[module.key as keyof typeof config.modules]}
-                      onCheckedChange={(checked) =>
-                        updateModules({ [module.key]: checked })
-                      }
-                      disabled={module.soon}
-                    />
                   </div>
                 </Card>
               ))}
@@ -275,14 +332,6 @@ export default function AdminSettings() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Save Button */}
-      <div className="fixed bottom-6 right-6">
-        <Button size="lg" className="gap-2 shadow-lg">
-          <Save className="h-5 w-5" />
-          Salvar Alterações
-        </Button>
-      </div>
     </AdminLayout>
   );
 }
