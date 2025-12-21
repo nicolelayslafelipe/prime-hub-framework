@@ -65,6 +65,19 @@ serve(async (req) => {
       },
     });
 
+    // Get target user info for audit log
+    const { data: targetProfile } = await adminClient
+      .from('profiles')
+      .select('name, phone')
+      .eq('id', userId)
+      .single();
+
+    const { data: targetRole } = await adminClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .single();
+
     // Check if target user is an admin
     const { data: targetIsAdmin } = await adminClient.rpc('has_role', {
       _user_id: userId,
@@ -81,6 +94,20 @@ serve(async (req) => {
       console.log(`Admin count: ${adminCount}`);
 
       if (adminCount && adminCount <= 1) {
+        // Log failed attempt
+        await adminClient.from('admin_audit_logs').insert({
+          user_id: currentUser.id,
+          action: 'delete_user_failed',
+          resource: 'users',
+          details: {
+            target_user_id: userId,
+            target_name: targetProfile?.name,
+            target_role: targetRole?.role,
+            reason: 'Cannot delete last admin',
+            timestamp: new Date().toISOString(),
+          },
+        });
+        
         throw new Error('Não é possível excluir o último administrador do sistema');
       }
     }
@@ -105,7 +132,23 @@ serve(async (req) => {
         throw new Error(`Erro ao desativar usuário: ${updateError.message}`);
       }
 
+      // Log soft delete
+      await adminClient.from('admin_audit_logs').insert({
+        user_id: currentUser.id,
+        action: 'soft_delete_user',
+        resource: 'users',
+        details: {
+          target_user_id: userId,
+          target_name: targetProfile?.name,
+          target_role: targetRole?.role,
+          reason: 'User has order history',
+          orders_count: ordersCount,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
       console.log(`User soft deleted (deactivated): ${userId}`);
+      console.log(`Audit log recorded for soft delete by admin ${currentUser.id}`);
 
       return new Response(
         JSON.stringify({
@@ -125,10 +168,39 @@ serve(async (req) => {
 
     if (deleteError) {
       console.error('Error deleting user:', deleteError);
+      
+      // Log failed hard delete
+      await adminClient.from('admin_audit_logs').insert({
+        user_id: currentUser.id,
+        action: 'delete_user_failed',
+        resource: 'users',
+        details: {
+          target_user_id: userId,
+          target_name: targetProfile?.name,
+          target_role: targetRole?.role,
+          error: deleteError.message,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      
       throw new Error(`Erro ao excluir usuário: ${deleteError.message}`);
     }
 
+    // Log successful hard delete
+    await adminClient.from('admin_audit_logs').insert({
+      user_id: currentUser.id,
+      action: 'hard_delete_user',
+      resource: 'users',
+      details: {
+        target_user_id: userId,
+        target_name: targetProfile?.name,
+        target_role: targetRole?.role,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
     console.log(`User hard deleted: ${userId}`);
+    console.log(`Audit log recorded for hard delete by admin ${currentUser.id}`);
 
     return new Response(
       JSON.stringify({

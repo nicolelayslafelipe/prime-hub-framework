@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuditLog } from './useAuditLog';
 
 export interface AdminClient {
   id: string;
@@ -19,6 +20,7 @@ export function useAdminClients() {
   const [clients, setClients] = useState<AdminClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { logUserAction } = useAuditLog();
 
   const fetchClients = useCallback(async () => {
     try {
@@ -113,6 +115,8 @@ export function useAdminClients() {
 
   const toggleClientStatus = useCallback(async (clientId: string, currentStatus: boolean) => {
     try {
+      const client = clients.find(c => c.id === clientId);
+      
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ is_active: !currentStatus })
@@ -124,12 +128,21 @@ export function useAdminClients() {
         prev.map(c => c.id === clientId ? { ...c, is_active: !currentStatus } : c)
       );
 
+      // Log the action
+      await logUserAction('toggle_user_status', clientId, client?.name || 'Unknown', {
+        new_status: !currentStatus,
+        previous_status: currentStatus,
+        role: 'client',
+        total_orders: client?.total_orders,
+        total_spent: client?.total_spent,
+      });
+
       toast.success(currentStatus ? 'Cliente bloqueado' : 'Cliente ativado');
     } catch (err) {
       console.error('Error toggling client status:', err);
       toast.error('Erro ao alterar status do cliente');
     }
-  }, []);
+  }, [clients, logUserAction]);
 
   const deleteClient = useCallback(async (clientId: string): Promise<{ success: boolean; softDeleted?: boolean }> => {
     try {
@@ -152,6 +165,8 @@ export function useAdminClients() {
       if (!result.success) {
         throw new Error(result.error || 'Erro ao excluir cliente');
       }
+
+      // Audit log is handled in edge function
 
       if (result.softDeleted) {
         // Update local state for soft delete

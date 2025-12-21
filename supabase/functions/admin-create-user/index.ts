@@ -75,6 +75,20 @@ serve(async (req) => {
 
     if (createError) {
       console.error('Error creating user:', createError);
+      
+      // Log failed attempt
+      await adminClient.from('admin_audit_logs').insert({
+        user_id: currentUser.id,
+        action: 'create_user_failed',
+        resource: 'users',
+        details: {
+          target_email: email,
+          target_role: role,
+          error: createError.message,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      
       throw new Error(`Failed to create user: ${createError.message}`);
     }
 
@@ -118,7 +132,23 @@ serve(async (req) => {
       throw new Error(`Failed to assign role: ${roleInsertError.message}`);
     }
 
+    // Log successful user creation
+    await adminClient.from('admin_audit_logs').insert({
+      user_id: currentUser.id,
+      action: 'create_user',
+      resource: 'users',
+      details: {
+        target_user_id: newUser.user.id,
+        target_email: email,
+        target_name: name,
+        target_role: role,
+        is_active: isActive,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
     console.log(`User created successfully: ${email} with role ${role}`);
+    console.log(`Audit log recorded for user creation by admin ${currentUser.id}`);
 
     return new Response(
       JSON.stringify({
