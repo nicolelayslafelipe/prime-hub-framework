@@ -730,9 +730,12 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     return !!selectedAddressId && validateAddress(getSelectedAddress());
   };
 
-  // Verificar se estabelecimento está aberto - combina toggle manual + horário automático
-  const isEstablishmentOpen = config.establishment.isOpen && (isLoadingHours || isCurrentlyOpen());
-  const nextOpeningTime = getNextOpeningTime();
+  // Verificar se estabelecimento está aberto
+  // O toggle manual (is_open) tem prioridade absoluta - se admin marcou como aberto, está aberto
+  // O horário automático só é usado como informação adicional, não bloqueia
+  const isEstablishmentOpen = config.establishment.isOpen;
+  const isWithinBusinessHours = isLoadingHours || isCurrentlyOpen();
+  const nextOpeningTime = !isWithinBusinessHours ? getNextOpeningTime() : null;
 
   const isPhoneValid = isValidBrazilianPhone(customerPhone);
 
