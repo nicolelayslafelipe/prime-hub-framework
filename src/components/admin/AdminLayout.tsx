@@ -1,10 +1,11 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { AdminSidebar } from './AdminSidebar';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { NotificationDropdown } from './NotificationDropdown';
+import { useSound } from '@/contexts/SoundContext';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -15,6 +16,27 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children, title, subtitle, headerRight }: AdminLayoutProps) {
   const { isCollapsed } = useSidebar();
+  const { initializeAudio, isAudioInitialized } = useSound();
+
+  // Initialize audio on first user interaction
+  useEffect(() => {
+    if (isAudioInitialized) return;
+
+    const handleUserInteraction = () => {
+      initializeAudio();
+      // Remove listeners after first interaction
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+    };
+
+    document.addEventListener('click', handleUserInteraction);
+    document.addEventListener('keydown', handleUserInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, [initializeAudio, isAudioInitialized]);
 
   return (
     <div className="min-h-screen bg-background">

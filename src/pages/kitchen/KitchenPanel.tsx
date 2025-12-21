@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useOrders } from '@/contexts/OrderContext';
 import { useSound } from '@/contexts/SoundContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,10 +65,31 @@ export default function KitchenPanel() {
     isPlayingKitchen, 
     isKitchenRepeating, 
     stopKitchenRepeat,
-    markOrderAsAlerted 
+    markOrderAsAlerted,
+    initializeAudio,
+    isAudioInitialized,
   } = useSound();
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+
+  // Initialize audio on first user interaction
+  useEffect(() => {
+    if (isAudioInitialized) return;
+
+    const handleUserInteraction = () => {
+      initializeAudio();
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+    };
+
+    document.addEventListener('click', handleUserInteraction);
+    document.addEventListener('keydown', handleUserInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, [initializeAudio, isAudioInitialized]);
 
   const kitchenOrders = orders.filter((order) =>
     kitchenStatuses.includes(order.status)

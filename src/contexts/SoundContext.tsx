@@ -29,6 +29,8 @@ interface SoundContextType {
   startKitchenRepeat: (orderId: string) => void;
   stopKitchenRepeat: () => void;
   isKitchenRepeating: boolean;
+  initializeAudio: () => Promise<void>;
+  isAudioInitialized: boolean;
 }
 
 const SoundContext = createContext<SoundContextType | null>(null);
@@ -41,11 +43,22 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   const [isPlayingKitchen, setIsPlayingKitchen] = useState(false);
   const [alertedOrderIds, setAlertedOrderIds] = useState<Set<string>>(new Set());
   const [isKitchenRepeating, setIsKitchenRepeating] = useState(false);
+  const [isAudioInitialized, setIsAudioInitialized] = useState(false);
 
   const lastPlayedAtRef = useRef<Record<string, number>>({ admin: 0, kitchen: 0 });
   const kitchenRepeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const kitchenRepeatStartTimeRef = useRef<number>(0);
   const soundPlayer = getSoundPlayer();
+
+  // Initialize audio on first user interaction
+  const initializeAudio = useCallback(async () => {
+    if (isAudioInitialized) return;
+    const success = await soundPlayer.initialize();
+    if (success) {
+      setIsAudioInitialized(true);
+      console.log('Audio initialized successfully');
+    }
+  }, [isAudioInitialized, soundPlayer]);
 
   // Fetch sound settings from database
   const fetchSettings = useCallback(async () => {
@@ -65,6 +78,10 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
             ...admin,
             sound_type: admin.sound_type as SoundType,
             panel_type: 'admin',
+            volume: Number(admin.volume) || 0.7,
+            min_interval_seconds: Number(admin.min_interval_seconds) || 3,
+            repeat_interval_seconds: Number(admin.repeat_interval_seconds) || 30,
+            max_repeat_duration_seconds: Number(admin.max_repeat_duration_seconds) || 300,
           });
         }
         if (kitchen) {
@@ -72,6 +89,10 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
             ...kitchen,
             sound_type: kitchen.sound_type as SoundType,
             panel_type: 'kitchen',
+            volume: Number(kitchen.volume) || 0.8,
+            min_interval_seconds: Number(kitchen.min_interval_seconds) || 3,
+            repeat_interval_seconds: Number(kitchen.repeat_interval_seconds) || 30,
+            max_repeat_duration_seconds: Number(kitchen.max_repeat_duration_seconds) || 300,
           });
         }
       }
@@ -243,6 +264,8 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
         startKitchenRepeat,
         stopKitchenRepeat,
         isKitchenRepeating,
+        initializeAudio,
+        isAudioInitialized,
       }}
     >
       {children}
