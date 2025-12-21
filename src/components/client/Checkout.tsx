@@ -91,7 +91,8 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   // Address state
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
-  const [newAddress, setNewAddress] = useState<NewAddressForm>({
+  
+  const initialNewAddress: NewAddressForm = {
     zip_code: '',
     street: '',
     number: '',
@@ -99,7 +100,9 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     neighborhood: '',
     city: '',
     state: 'SP',
-  });
+  };
+  
+  const [newAddress, setNewAddress] = useState<NewAddressForm>(initialNewAddress);
   const [isSearchingCep, setIsSearchingCep] = useState(false);
   const [cepFound, setCepFound] = useState(false);
   
@@ -109,6 +112,15 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   
   // Validation
   const [addressErrors, setAddressErrors] = useState<string[]>([]);
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+
+  // Reset new address form
+  const resetNewAddressForm = useCallback(() => {
+    setNewAddress(initialNewAddress);
+    setCepFound(false);
+    setAddressErrors([]);
+    setTouchedFields(new Set());
+  }, []);
 
   const subtotal = getSubtotal();
   const deliveryFee = config.establishment.deliveryFee;
@@ -317,7 +329,9 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     setStep('form');
     setNeedsChange(false);
     setChangeFor('');
-    setAddressErrors([]);
+    setShowNewAddressForm(false);
+    setSelectedAddressId(null);
+    resetNewAddressForm();
     onClose();
   };
 
@@ -343,8 +357,53 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
 
   const canPlaceOrder = 
     items.length > 0 && 
+    customerPhone.trim().length > 0 &&
     isAddressValid() && 
     !(paymentMethod === 'cash' && needsChange && changeForNumber < total);
+
+  // Mark field as touched
+  const markFieldTouched = (fieldName: string) => {
+    setTouchedFields(prev => new Set(prev).add(fieldName));
+  };
+
+  // Real-time validation for new address
+  useEffect(() => {
+    if (showNewAddressForm && touchedFields.size > 0) {
+      const errors: string[] = [];
+      const cleanZip = formatCep(newAddress.zip_code);
+      
+      if (touchedFields.has('zip_code') && cleanZip.length > 0 && cleanZip.length !== 8) {
+        errors.push('CEP inválido');
+      }
+      if (touchedFields.has('street') && !newAddress.street?.trim()) {
+        errors.push('Rua é obrigatória');
+      }
+      if (touchedFields.has('number') && !newAddress.number?.trim()) {
+        errors.push('Número é obrigatório');
+      }
+      if (touchedFields.has('neighborhood') && !newAddress.neighborhood?.trim()) {
+        errors.push('Bairro é obrigatório');
+      }
+      if (touchedFields.has('city') && !newAddress.city?.trim()) {
+        errors.push('Cidade é obrigatória');
+      }
+      if (touchedFields.has('state') && !newAddress.state?.trim()) {
+        errors.push('Estado é obrigatório');
+      }
+      
+      setAddressErrors(errors);
+    }
+  }, [showNewAddressForm, newAddress, touchedFields]);
+
+  // Get validation class for field
+  const getFieldValidationClass = (fieldName: string, value: string | undefined): string => {
+    if (!touchedFields.has(fieldName)) return '';
+    if (fieldName === 'zip_code') {
+      const cleanZip = formatCep(value || '');
+      return cleanZip.length > 0 && cleanZip.length !== 8 ? 'border-destructive focus-visible:ring-destructive' : '';
+    }
+    return !value?.trim() ? 'border-destructive focus-visible:ring-destructive' : '';
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -455,7 +514,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                         onClick={() => {
                           setShowNewAddressForm(true);
                           setSelectedAddressId(null);
-                          setAddressErrors([]);
+                          resetNewAddressForm();
                         }}
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                           showNewAddressForm
@@ -483,14 +542,15 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                 {(showNewAddressForm || addresses.length === 0) && (
                   <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border animate-fade-in">
                     <div className="space-y-2">
-                      <Label htmlFor="checkout-cep">CEP</Label>
+                      <Label htmlFor="checkout-cep">CEP <span className="text-destructive">*</span></Label>
                       <div className="relative">
                         <Input
                           id="checkout-cep"
                           placeholder="00000-000"
                           value={newAddress.zip_code}
                           onChange={(e) => handleCepChange(e.target.value)}
-                          className="pr-10 bg-background"
+                          onBlur={() => markFieldTouched('zip_code')}
+                          className={`pr-10 bg-background ${getFieldValidationClass('zip_code', newAddress.zip_code)}`}
                         />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                           {isSearchingCep ? (
@@ -505,25 +565,27 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="checkout-street">Rua</Label>
+                      <Label htmlFor="checkout-street">Rua <span className="text-destructive">*</span></Label>
                       <Input
                         id="checkout-street"
                         placeholder="Rua, Avenida..."
                         value={newAddress.street}
                         onChange={(e) => setNewAddress(prev => ({ ...prev, street: e.target.value }))}
-                        className="bg-background"
+                        onBlur={() => markFieldTouched('street')}
+                        className={`bg-background ${getFieldValidationClass('street', newAddress.street)}`}
                       />
                     </div>
                     
                     <div className="grid grid-cols-3 gap-2">
                       <div className="space-y-2">
-                        <Label htmlFor="checkout-number">Número</Label>
+                        <Label htmlFor="checkout-number">Número <span className="text-destructive">*</span></Label>
                         <Input
                           id="checkout-number"
                           placeholder="123"
                           value={newAddress.number}
                           onChange={(e) => setNewAddress(prev => ({ ...prev, number: e.target.value }))}
-                          className="bg-background"
+                          onBlur={() => markFieldTouched('number')}
+                          className={`bg-background ${getFieldValidationClass('number', newAddress.number)}`}
                         />
                       </div>
                       <div className="col-span-2 space-y-2">
@@ -539,35 +601,38 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="checkout-neighborhood">Bairro</Label>
+                      <Label htmlFor="checkout-neighborhood">Bairro <span className="text-destructive">*</span></Label>
                       <Input
                         id="checkout-neighborhood"
                         placeholder="Bairro"
                         value={newAddress.neighborhood}
                         onChange={(e) => setNewAddress(prev => ({ ...prev, neighborhood: e.target.value }))}
-                        className="bg-background"
+                        onBlur={() => markFieldTouched('neighborhood')}
+                        className={`bg-background ${getFieldValidationClass('neighborhood', newAddress.neighborhood)}`}
                       />
                     </div>
                     
                     <div className="grid grid-cols-3 gap-2">
                       <div className="col-span-2 space-y-2">
-                        <Label htmlFor="checkout-city">Cidade</Label>
+                        <Label htmlFor="checkout-city">Cidade <span className="text-destructive">*</span></Label>
                         <Input
                           id="checkout-city"
                           placeholder="Cidade"
                           value={newAddress.city}
                           onChange={(e) => setNewAddress(prev => ({ ...prev, city: e.target.value }))}
-                          className="bg-background"
+                          onBlur={() => markFieldTouched('city')}
+                          className={`bg-background ${getFieldValidationClass('city', newAddress.city)}`}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="checkout-state">Estado</Label>
+                        <Label htmlFor="checkout-state">Estado <span className="text-destructive">*</span></Label>
                         <Input
                           id="checkout-state"
                           placeholder="SP"
                           value={newAddress.state}
                           onChange={(e) => setNewAddress(prev => ({ ...prev, state: e.target.value }))}
-                          className="bg-background"
+                          onBlur={() => markFieldTouched('state')}
+                          className={`bg-background ${getFieldValidationClass('state', newAddress.state)}`}
                           maxLength={2}
                         />
                       </div>
@@ -752,9 +817,11 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
               >
                 Confirmar Pedido
               </Button>
-              {!isAddressValid() && items.length > 0 && (
+              {!canPlaceOrder && items.length > 0 && (
                 <p className="text-xs text-muted-foreground text-center mt-2">
-                  Preencha o endereço de entrega para continuar
+                  {!customerPhone.trim() ? 'Informe seu telefone para continuar' : 
+                   !isAddressValid() ? 'Preencha o endereço de entrega para continuar' :
+                   paymentMethod === 'cash' && needsChange && changeForNumber < total ? 'Informe um valor válido para o troco' : ''}
                 </p>
               )}
             </div>
