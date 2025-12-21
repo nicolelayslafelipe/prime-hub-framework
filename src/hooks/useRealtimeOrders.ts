@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Order, OrderStatus, OrderItem } from '@/types';
+import { Order, OrderStatus, OrderItem, OrderType } from '@/types';
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 interface DbOrder {
@@ -22,6 +22,9 @@ interface DbOrder {
   needs_change: boolean | null;
   change_for: number | null;
   change_amount: number | null;
+  order_type: string | null;
+  table_number: string | null;
+  cash_register_id: string | null;
 }
 
 interface DbOrderItem {
@@ -57,6 +60,9 @@ const mapDbOrderToOrder = (dbOrder: DbOrder, items: OrderItem[]): Order => ({
   needsChange: dbOrder.needs_change || false,
   changeFor: dbOrder.change_for ? Number(dbOrder.change_for) : undefined,
   changeAmount: dbOrder.change_amount ? Number(dbOrder.change_amount) : undefined,
+  orderType: (dbOrder.order_type as OrderType) || 'delivery',
+  tableNumber: dbOrder.table_number || undefined,
+  cashRegisterId: dbOrder.cash_register_id || undefined,
 });
 
 const mapDbItemToOrderItem = (dbItem: DbOrderItem): OrderItem => ({
@@ -243,6 +249,10 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
           needs_change: orderData.needsChange || false,
           change_for: orderData.changeFor || null,
           change_amount: orderData.changeAmount || null,
+          order_type: orderData.orderType || 'delivery',
+          table_number: orderData.tableNumber || null,
+          cash_register_id: orderData.cashRegisterId || null,
+          payment_status: orderData.orderType?.startsWith('pdv_') ? 'approved' : 'pending',
         })
         .select()
         .single();

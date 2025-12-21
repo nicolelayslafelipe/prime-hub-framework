@@ -34,6 +34,8 @@ export interface OrderItem {
   additions?: string[];
 }
 
+export type OrderType = 'delivery' | 'pdv_counter' | 'pdv_pickup' | 'pdv_table';
+
 export interface Order {
   id: string;
   orderNumber: number;
@@ -58,6 +60,10 @@ export interface Order {
   needsChange?: boolean;
   changeFor?: number;
   changeAmount?: number;
+  // PDV fields
+  orderType?: OrderType;
+  tableNumber?: string;
+  cashRegisterId?: string;
 }
 
 export interface EstablishmentSettings {
