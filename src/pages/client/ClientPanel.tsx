@@ -15,7 +15,7 @@ import { Checkout } from '@/components/client/Checkout';
 import { OrderTracking } from '@/components/client/OrderTracking';
 import { HeroBanner } from '@/components/client/HeroBanner';
 import { BannerCarousel } from '@/components/client/BannerCarousel';
-import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher';
+
 import { LoadingState } from '@/components/shared/LoadingState';
 import { Order } from '@/types';
 import {
@@ -159,7 +159,6 @@ export default function ClientPanel() {
               <Logo size="sm" />
             </div>
             <div className="flex items-center gap-2">
-              <ThemeSwitcher />
               
               {/* Auth Buttons */}
               {!user ? (

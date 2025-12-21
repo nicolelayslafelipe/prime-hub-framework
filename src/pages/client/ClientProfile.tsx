@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ProfileEditor } from '@/components/shared/ProfileEditor';
 import { Button } from '@/components/ui/button';
-import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher';
+
 import { ArrowLeft } from 'lucide-react';
 
 export default function ClientProfile() {
@@ -21,7 +21,7 @@ export default function ClientProfile() {
               </Button>
               <h1 className="text-lg font-semibold">Meu Perfil</h1>
             </div>
-            <ThemeSwitcher />
+            
           </div>
         </header>
 

@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Logo } from '@/components/shared/Logo';
-import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher';
+
 import { toast } from 'sonner';
 import { Loader2, Mail, Lock, User, Phone, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -295,7 +295,7 @@ export default function AuthPage() {
             </Button>
             <Logo size="sm" />
           </div>
-          <ThemeSwitcher />
+          
         </div>
       </motion.header>
 
