@@ -614,4 +614,50 @@
   .divider-vertical {
     @apply w-px h-full bg-border/50;
   }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Kanban Status Colors - Strong and visible
+     ───────────────────────────────────────────────────────────────────────── */
+  .kanban-header-pending {
+    background-color: hsl(42 85% 50%);
+  }
+
+  .kanban-header-preparing {
+    background-color: hsl(220 70% 55%);
+  }
+
+  .kanban-header-ready {
+    background-color: hsl(158 70% 45%);
+  }
+
+  .kanban-header-delivering {
+    background-color: hsl(280 55% 55%);
+  }
+
+  /* Subtle pulse animation for urgent items */
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.85;
+    }
+  }
+
+  /* Scrollbar thin variant */
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
 }
