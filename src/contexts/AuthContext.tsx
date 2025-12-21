@@ -43,27 +43,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(false);
 
   const fetchUserData = async (userId: string) => {
-    // Fetch profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
+    setRoleLoading(true);
+    try {
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
 
-    if (profileData) {
-      setProfile(profileData);
-    }
+      if (profileData) {
+        setProfile(profileData);
+      }
 
-    // Fetch role using the database function
-    const { data: roleData } = await supabase
-      .rpc('get_user_role', { _user_id: userId });
+      // Fetch role using the database function
+      const { data: roleData } = await supabase
+        .rpc('get_user_role', { _user_id: userId });
 
-    if (roleData) {
-      setRole(roleData as AppRole);
-    } else {
+      if (roleData) {
+        setRole(roleData as AppRole);
+      } else {
+        setRole('client');
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
       setRole('client');
+    } finally {
+      setRoleLoading(false);
     }
   };
 
@@ -128,6 +137,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         return { error: new Error('Sua conta está desativada. Entre em contato com o administrador.') };
       }
+
+      // Fetch role immediately after successful login
+      await fetchUserData(data.user.id);
     }
 
     return { error: null };
@@ -151,11 +163,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Clear local state first
     setUser(null);
     setSession(null);
     setProfile(null);
     setRole(null);
+    
+    // Then sign out from Supabase
+    await supabase.auth.signOut();
+    
+    // Clear any localStorage items that might persist state
+    localStorage.removeItem('pendingCheckout');
   };
 
   const updateProfile = async (data: ProfileUpdate) => {
@@ -223,6 +241,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchUserData(user.id);
   };
 
+  // Combined loading state: both auth loading and role loading must complete
+  const isLoading = loading || (user !== null && roleLoading);
+
   return (
     <AuthContext.Provider
       value={{
@@ -230,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         profile,
         role,
-        loading,
+        loading: isLoading,
         signIn,
         signUp,
         signOut,
