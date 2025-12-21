@@ -29,7 +29,7 @@ export function CashRegisterOpen({ open, onOpenRegister }: CashRegisterOpenProps
   };
 
   const handleBack = () => {
-    navigate('/admin/dashboard');
+    navigate('/admin');
   };
 
   return (
