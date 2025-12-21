@@ -112,6 +112,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             address: data.address || 'Rua Exemplo, 123 - Centro',
             phone: data.phone || '(11) 99999-9999',
             whatsapp: data.whatsapp || '5511999999999',
+            // Distance-based fee settings
+            distanceFeeEnabled: data.distance_fee_enabled || false,
+            baseDeliveryFee: data.base_delivery_fee || 5,
+            pricePerKm: data.price_per_km || 2,
+            minDistanceIncluded: data.min_distance_included || 2,
+            establishmentLatitude: data.establishment_latitude || undefined,
+            establishmentLongitude: data.establishment_longitude || undefined,
           },
         }));
       }
@@ -173,6 +180,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       if (settings.address !== undefined) updateData.address = settings.address;
       if (settings.phone !== undefined) updateData.phone = settings.phone;
       if (settings.whatsapp !== undefined) updateData.whatsapp = settings.whatsapp;
+      // Distance-based fee settings
+      if (settings.distanceFeeEnabled !== undefined) updateData.distance_fee_enabled = settings.distanceFeeEnabled;
+      if (settings.baseDeliveryFee !== undefined) updateData.base_delivery_fee = settings.baseDeliveryFee;
+      if (settings.pricePerKm !== undefined) updateData.price_per_km = settings.pricePerKm;
+      if (settings.minDistanceIncluded !== undefined) updateData.min_distance_included = settings.minDistanceIncluded;
+      if (settings.establishmentLatitude !== undefined) updateData.establishment_latitude = settings.establishmentLatitude;
+      if (settings.establishmentLongitude !== undefined) updateData.establishment_longitude = settings.establishmentLongitude;
 
       if (Object.keys(updateData).length > 0) {
         const { error: updateError } = await supabase

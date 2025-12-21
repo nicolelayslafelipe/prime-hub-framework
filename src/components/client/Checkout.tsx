@@ -15,6 +15,7 @@ import { useOrders } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientAddresses, ClientAddress } from '@/hooks/useClientAddresses';
 import { useClientPreferences } from '@/hooks/useClientPreferences';
+import { useDeliveryFeeCalculation } from '@/hooks/useDeliveryFeeCalculation';
 import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
 import { GeocodedAddress } from '@/hooks/useAddressSearch';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,7 +33,8 @@ import {
   AlertCircle,
   Home,
   Building2,
-  Briefcase
+  Briefcase,
+  Loader2
 } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -83,6 +85,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     refetch: refetchAddresses
   } = useClientAddresses();
   const { preferences, updatePreference } = useClientPreferences();
+  const { calculateFee, isCalculating: isCalculatingFee, lastResult: feeResult } = useDeliveryFeeCalculation();
   
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [paymentMethod, setPaymentMethod] = useState('pix');
@@ -113,16 +116,24 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   // Validation
   const [addressErrors, setAddressErrors] = useState<string[]>([]);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+  
+  // Dynamic delivery fee
+  const [calculatedDeliveryFee, setCalculatedDeliveryFee] = useState<number | null>(null);
+  const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
 
   // Reset new address form
   const resetNewAddressForm = useCallback(() => {
     setNewAddress(initialNewAddress);
     setAddressErrors([]);
     setTouchedFields(new Set());
+    setCalculatedDeliveryFee(null);
+    setDeliveryDistance(null);
   }, []);
 
   const subtotal = getSubtotal();
-  const deliveryFee = config.establishment.deliveryFee;
+  
+  // Use calculated fee if distance-based pricing is enabled and we have coordinates
+  const deliveryFee = calculatedDeliveryFee !== null ? calculatedDeliveryFee : config.establishment.deliveryFee;
   const total = subtotal + deliveryFee;
   
   const changeForNumber = parseFloat(changeFor) || 0;
@@ -157,7 +168,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   }, [profile]);
 
   // Handle address selection from Mapbox autocomplete
-  const handleAddressSelect = useCallback((address: GeocodedAddress) => {
+  const handleAddressSelect = useCallback(async (address: GeocodedAddress) => {
     setNewAddress({
       street: address.street,
       number: address.number,
@@ -171,6 +182,23 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     });
     setAddressErrors([]);
     
+    // Calculate delivery fee if distance-based pricing is enabled
+    if (config.establishment.distanceFeeEnabled && address.latitude && address.longitude) {
+      const result = await calculateFee(address.latitude, address.longitude, {
+        enabled: true,
+        baseFee: config.establishment.baseDeliveryFee || 5,
+        pricePerKm: config.establishment.pricePerKm || 2,
+        minDistanceIncluded: config.establishment.minDistanceIncluded || 2,
+        establishmentLatitude: config.establishment.establishmentLatitude || null,
+        establishmentLongitude: config.establishment.establishmentLongitude || null,
+      });
+      
+      if (result) {
+        setCalculatedDeliveryFee(result.fee);
+        setDeliveryDistance(result.distance);
+      }
+    }
+    
     // Focus on number field if empty
     if (!address.number) {
       setTimeout(() => {
@@ -179,7 +207,34 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     }
     
     toast.success('Endereço selecionado!');
-  }, []);
+  }, [config.establishment, calculateFee]);
+  
+  // Calculate fee when selecting a saved address with coordinates
+  const handleSelectSavedAddress = useCallback(async (addr: ClientAddress) => {
+    setShowNewAddressForm(false);
+    setSelectedAddressId(addr.id);
+    setAddressErrors([]);
+    
+    // Calculate delivery fee if distance-based pricing is enabled and address has coordinates
+    if (config.establishment.distanceFeeEnabled && addr.latitude && addr.longitude) {
+      const result = await calculateFee(addr.latitude, addr.longitude, {
+        enabled: true,
+        baseFee: config.establishment.baseDeliveryFee || 5,
+        pricePerKm: config.establishment.pricePerKm || 2,
+        minDistanceIncluded: config.establishment.minDistanceIncluded || 2,
+        establishmentLatitude: config.establishment.establishmentLatitude || null,
+        establishmentLongitude: config.establishment.establishmentLongitude || null,
+      });
+      
+      if (result) {
+        setCalculatedDeliveryFee(result.fee);
+        setDeliveryDistance(result.distance);
+      }
+    } else {
+      setCalculatedDeliveryFee(null);
+      setDeliveryDistance(null);
+    }
+  }, [config.establishment, calculateFee]);
 
   const getSelectedAddress = (): ClientAddress | null => {
     if (selectedAddressId) {
@@ -492,11 +547,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                       {addresses.map((addr) => (
                         <div
                           key={addr.id}
-                          onClick={() => {
-                            setShowNewAddressForm(false);
-                            setSelectedAddressId(addr.id);
-                            setAddressErrors([]);
-                          }}
+                          onClick={() => handleSelectSavedAddress(addr)}
                           className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                             selectedAddressId === addr.id && !showNewAddressForm
                               ? 'border-primary bg-primary/5' 
@@ -791,7 +842,13 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                     <span>R$ {subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Taxa de entrega</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">Taxa de entrega</span>
+                      {isCalculatingFee && <Loader2 className="h-3 w-3 animate-spin" />}
+                      {deliveryDistance !== null && (
+                        <span className="text-xs text-muted-foreground">({deliveryDistance.toFixed(1)} km)</span>
+                      )}
+                    </div>
                     <span>R$ {deliveryFee.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-semibold text-lg pt-2">

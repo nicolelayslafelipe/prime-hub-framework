@@ -15,6 +15,8 @@ export interface ClientAddress {
   zip_code: string;
   reference: string | null;
   is_default: boolean;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -70,15 +72,13 @@ export function useClientAddresses() {
   const validateAddress = useCallback((address: ClientAddress | null): boolean => {
     if (!address) return false;
     
-    const cleanZip = address.zip_code.replace(/\D/g, '');
-    
+    // CEP is now optional with Mapbox integration
     return !!(
       address.street?.trim() &&
       address.number?.trim() &&
       address.neighborhood?.trim() &&
       address.city?.trim() &&
-      address.state?.trim() &&
-      cleanZip.length === 8
+      address.state?.trim()
     );
   }, []);
 
@@ -96,9 +96,7 @@ export function useClientAddresses() {
     if (!address.city?.trim()) errors.push('Cidade é obrigatória');
     if (!address.state?.trim()) errors.push('Estado é obrigatório');
     
-    const cleanZip = address.zip_code?.replace(/\D/g, '') || '';
-    if (cleanZip.length !== 8) errors.push('CEP inválido');
-    
+    // CEP is now optional
     return errors;
   }, []);
 
