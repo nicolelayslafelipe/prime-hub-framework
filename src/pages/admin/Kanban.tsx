@@ -1,15 +1,29 @@
+import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { KanbanBoard } from '@/components/admin/KanbanBoard';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
+import { OrderDetailsModal } from '@/components/shared/OrderDetailsModal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrders } from '@/contexts/OrderContext';
-import { OrderStatus } from '@/types';
+import { Order, OrderStatus } from '@/types';
 
 export default function AdminKanban() {
   const { orders, updateOrderStatus, isLoading, connectionStatus } = useOrders();
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
     await updateOrderStatus(orderId, newStatus);
+  };
+
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setIsModalOpen(true);
+  };
+
+  const handleModalUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
+    await updateOrderStatus(orderId, newStatus);
+    setIsModalOpen(false);
   };
 
   return (
@@ -32,8 +46,18 @@ export default function AdminKanban() {
         <KanbanBoard
           orders={orders}
           onUpdateStatus={handleUpdateStatus}
+          onViewOrder={handleViewOrder}
         />
       )}
+
+      {/* Order Details Modal */}
+      <OrderDetailsModal
+        order={selectedOrder}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onUpdateStatus={handleModalUpdateStatus}
+        showActions={true}
+      />
     </AdminLayout>
   );
 }
