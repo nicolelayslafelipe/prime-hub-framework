@@ -17,7 +17,9 @@ import { useClientAddresses, ClientAddress } from '@/hooks/useClientAddresses';
 import { useClientPreferences } from '@/hooks/useClientPreferences';
 import { useDeliveryFeeCalculation } from '@/hooks/useDeliveryFeeCalculation';
 import { useETACalculation } from '@/hooks/useETACalculation';
+import { useMercadoPagoPayment } from '@/hooks/useMercadoPagoPayment';
 import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
+import { PaymentModal } from '@/components/client/PaymentModal';
 import { GeocodedAddress } from '@/hooks/useAddressSearch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -36,7 +38,8 @@ import {
   Building2,
   Briefcase,
   Loader2,
-  Clock
+  Clock,
+  Wallet
 } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -47,9 +50,11 @@ interface CheckoutProps {
 }
 
 const paymentMethods = [
-  { id: 'pix', label: 'PIX', icon: Smartphone, description: 'Pagamento instantâneo' },
-  { id: 'credit', label: 'Cartão de Crédito', icon: CreditCard, description: 'Visa, Master, Elo' },
-  { id: 'debit', label: 'Cartão de Débito', icon: CreditCard, description: 'Na entrega' },
+  { id: 'pix_online', label: 'PIX Online', icon: Smartphone, description: 'Pague agora via PIX', isOnline: true },
+  { id: 'card_online', label: 'Cartão Online', icon: Wallet, description: 'Pague agora com cartão', isOnline: true },
+  { id: 'pix', label: 'PIX na Entrega', icon: Smartphone, description: 'Pague na entrega' },
+  { id: 'credit', label: 'Cartão de Crédito', icon: CreditCard, description: 'Máquina na entrega' },
+  { id: 'debit', label: 'Cartão de Débito', icon: CreditCard, description: 'Máquina na entrega' },
   { id: 'cash', label: 'Dinheiro', icon: Banknote, description: 'Pagamento na entrega' },
 ];
 
@@ -89,12 +94,14 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   const { preferences, updatePreference } = useClientPreferences();
   const { calculateFee, isCalculating: isCalculatingFee, lastResult: feeResult } = useDeliveryFeeCalculation();
   const { calculateETA, isCalculating: isCalculatingETA, lastResult: etaResult } = useETACalculation();
+  const { createPayment, isCreating: isCreatingPayment, paymentResult, resetPayment } = useMercadoPagoPayment();
   
   const [step, setStep] = useState<'form' | 'success'>('form');
-  const [paymentMethod, setPaymentMethod] = useState('pix');
+  const [paymentMethod, setPaymentMethod] = useState('pix_online');
   const [notes, setNotes] = useState('');
   const [customerName, setCustomerName] = useState(profile?.name || '');
   const [customerPhone, setCustomerPhone] = useState(profile?.phone || '');
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   
   // Address state
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -127,6 +134,11 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   
   // Dynamic ETA
   const [estimatedTime, setEstimatedTime] = useState<string | null>(null);
+  
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [currentPaymentType, setCurrentPaymentType] = useState<'pix' | 'card'>('pix');
 
   // Reset new address form
   const resetNewAddressForm = useCallback(() => {
@@ -411,65 +423,162 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
       return;
     }
 
-    // Save payment method preference
-    if (preferences?.save_payment_method) {
-      await updatePreference('last_payment_method', paymentMethod);
-    }
+    setIsPlacingOrder(true);
 
-    // Salvar endereço automaticamente se for novo
-    if (showNewAddressForm) {
-      saveNewAddressToDatabase();
-    }
+    try {
+      // Save payment method preference
+      if (preferences?.save_payment_method) {
+        await updatePreference('last_payment_method', paymentMethod);
+      }
 
-    const orderNumber = 1000 + orders.length + 1;
-    
-    // Get coordinates for order
-    let customerLatitude: number | undefined;
-    let customerLongitude: number | undefined;
-    
-    if (showNewAddressForm && newAddress.latitude && newAddress.longitude) {
-      customerLatitude = newAddress.latitude;
-      customerLongitude = newAddress.longitude;
-    }
-    
-    const newOrder: Order = {
-      id: `order-${Date.now()}`,
-      orderNumber,
-      customerId: user.id,
-      customerName: customerName || profile?.name || 'Cliente',
-      customerPhone: customerPhone || profile?.phone || '(00) 00000-0000',
-      customerAddress: getAddressForOrder(),
-      items: items.map((item, index) => ({
-        id: `item-${index}`,
-        productId: item.product.id,
-        productName: item.product.name,
+      // Salvar endereço automaticamente se for novo
+      if (showNewAddressForm) {
+        saveNewAddressToDatabase();
+      }
+
+      // Get coordinates for order
+      let customerLatitude: number | undefined;
+      let customerLongitude: number | undefined;
+      
+      if (showNewAddressForm && newAddress.latitude && newAddress.longitude) {
+        customerLatitude = newAddress.latitude;
+        customerLongitude = newAddress.longitude;
+      } else {
+        const selectedAddr = getSelectedAddress();
+        if (selectedAddr?.latitude && selectedAddr?.longitude) {
+          customerLatitude = selectedAddr.latitude;
+          customerLongitude = selectedAddr.longitude;
+        }
+      }
+
+      const isOnlinePayment = paymentMethod === 'pix_online' || paymentMethod === 'card_online';
+      const orderStatus = isOnlinePayment ? 'waiting_payment' : 'pending';
+      
+      // Create order in database
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          customer_id: user.id,
+          customer_name: customerName || profile?.name || 'Cliente',
+          customer_phone: customerPhone || profile?.phone || '(00) 00000-0000',
+          customer_address: getAddressForOrder(),
+          customer_latitude: customerLatitude,
+          customer_longitude: customerLongitude,
+          status: orderStatus,
+          payment_status: isOnlinePayment ? 'pending' : null,
+          subtotal,
+          delivery_fee: deliveryFee,
+          total,
+          payment_method: paymentMethods.find(p => p.id === paymentMethod)?.label || 'PIX Online',
+          notes: buildOrderNotes(),
+          needs_change: paymentMethod === 'cash' && needsChange,
+          change_for: paymentMethod === 'cash' && needsChange ? changeForNumber : undefined,
+          change_amount: paymentMethod === 'cash' && needsChange ? changeAmount : undefined,
+        })
+        .select()
+        .single();
+
+      if (orderError || !orderData) {
+        throw new Error(orderError?.message || 'Erro ao criar pedido');
+      }
+
+      // Insert order items
+      const orderItems = items.map((item) => ({
+        order_id: orderData.id,
+        product_id: item.product.id,
+        product_name: item.product.name,
         quantity: item.quantity,
-        unitPrice: item.product.price,
-        notes: item.notes,
-      })),
-      status: 'pending',
-      subtotal,
-      deliveryFee,
-      total,
-      paymentMethod: paymentMethods.find(p => p.id === paymentMethod)?.label || 'PIX',
-      notes: buildOrderNotes(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      needsChange: paymentMethod === 'cash' && needsChange,
-      changeFor: paymentMethod === 'cash' && needsChange ? changeForNumber : undefined,
-      changeAmount: paymentMethod === 'cash' && needsChange ? changeAmount : undefined,
-      customerLatitude,
-      customerLongitude,
-    };
+        unit_price: item.product.price,
+        notes: item.notes || null,
+      }));
 
-    addOrder(newOrder);
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Error inserting order items:', itemsError);
+      }
+
+      // Handle online payment
+      if (isOnlinePayment) {
+        const paymentType = paymentMethod === 'pix_online' ? 'pix' : 'card';
+        setCurrentOrderId(orderData.id);
+        setCurrentPaymentType(paymentType);
+
+        const result = await createPayment({
+          orderId: orderData.id,
+          paymentType,
+          amount: total,
+          customerEmail: user.email,
+          description: `Pedido #${orderData.order_number}`,
+        });
+
+        if (result) {
+          setShowPaymentModal(true);
+        } else {
+          // Payment creation failed, update order status
+          await supabase
+            .from('orders')
+            .update({ status: 'cancelled', payment_status: 'cancelled' })
+            .eq('id', orderData.id);
+          throw new Error('Erro ao criar pagamento');
+        }
+      } else {
+        // Non-online payment - go directly to success
+        const newOrder: Order = {
+          id: orderData.id,
+          orderNumber: orderData.order_number,
+          customerId: user.id,
+          customerName: orderData.customer_name,
+          customerPhone: orderData.customer_phone,
+          customerAddress: orderData.customer_address,
+          items: items.map((item, index) => ({
+            id: `item-${index}`,
+            productId: item.product.id,
+            productName: item.product.name,
+            quantity: item.quantity,
+            unitPrice: item.product.price,
+            notes: item.notes,
+          })),
+          status: 'pending',
+          subtotal,
+          deliveryFee,
+          total,
+          paymentMethod: paymentMethods.find(p => p.id === paymentMethod)?.label || 'PIX',
+          notes: buildOrderNotes(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          needsChange: paymentMethod === 'cash' && needsChange,
+          changeFor: paymentMethod === 'cash' && needsChange ? changeForNumber : undefined,
+          changeAmount: paymentMethod === 'cash' && needsChange ? changeAmount : undefined,
+          customerLatitude,
+          customerLongitude,
+        };
+
+        setStep('success');
+        
+        // Clear form and cart after delay
+        setTimeout(() => {
+          clearCart();
+          onOrderPlaced(newOrder);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast.error('Erro ao criar pedido', {
+        description: error instanceof Error ? error.message : 'Tente novamente',
+      });
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
+
+  const handlePaymentApproved = () => {
+    setShowPaymentModal(false);
     setStep('success');
-    
-    // Clear form and cart after delay
-    setTimeout(() => {
-      clearCart();
-      onOrderPlaced(newOrder);
-    }, 2000);
+    clearCart();
+    toast.success('Pagamento aprovado!');
   };
 
   const buildOrderNotes = () => {
@@ -488,6 +597,9 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     setShowNewAddressForm(false);
     setSelectedAddressId(null);
     resetNewAddressForm();
+    resetPayment();
+    setShowPaymentModal(false);
+    setCurrentOrderId(null);
     onClose();
   };
 
@@ -966,17 +1078,26 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
               <Button 
                 className="w-full h-12 text-base font-semibold" 
                 onClick={handlePlaceOrder}
-                disabled={!canPlaceOrder}
+                disabled={!canPlaceOrder || isPlacingOrder || isCreatingPayment}
               >
-                {isOutsideDeliveryArea ? 'Fora da Área de Entrega' : 'Confirmar Pedido'}
+                {isPlacingOrder || isCreatingPayment ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : isOutsideDeliveryArea ? (
+                  'Fora da Área de Entrega'
+                ) : (
+                  'Confirmar Pedido'
+                )}
               </Button>
             </div>
           </>
         ) : (
           /* Success State */
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <div className="h-20 w-20 rounded-full bg-green-500/10 flex items-center justify-center mb-6 animate-scale-in">
-              <CheckCircle2 className="h-10 w-10 text-green-500" />
+            <div className="h-20 w-20 rounded-full bg-accent/10 flex items-center justify-center mb-6 animate-scale-in">
+              <CheckCircle2 className="h-10 w-10 text-accent" />
             </div>
             <h2 className="text-2xl font-bold mb-2">Pedido Confirmado!</h2>
             <p className="text-muted-foreground mb-6">
@@ -991,6 +1112,18 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
           </div>
         )}
       </SheetContent>
+
+      {/* Payment Modal for Online Payments */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        orderId={currentOrderId}
+        paymentType={currentPaymentType}
+        qrCode={paymentResult?.qr_code}
+        qrCodeBase64={paymentResult?.qr_code_base64}
+        checkoutUrl={paymentResult?.checkout_url}
+        onPaymentApproved={handlePaymentApproved}
+      />
     </Sheet>
   );
 }
