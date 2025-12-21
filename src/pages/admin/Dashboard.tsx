@@ -16,6 +16,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { OrderStatus } from '@/types';
+import { useNavigate } from 'react-router-dom';
 
 const statusFlow: Record<OrderStatus, OrderStatus | null> = {
   waiting_payment: 'pending',
@@ -29,6 +30,7 @@ const statusFlow: Record<OrderStatus, OrderStatus | null> = {
 };
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const { config, toggleEstablishment, toggleDelivery } = useConfig();
   const { orders, updateOrderStatus, getOrdersByStatus } = useOrders();
 
@@ -134,7 +136,12 @@ export default function AdminDashboard() {
               Pendentes
               <span className="text-sm font-normal text-muted-foreground">({pendingOrders.length})</span>
             </h2>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => navigate('/admin/orders')}
+            >
               Ver todos
               <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
@@ -165,7 +172,12 @@ export default function AdminDashboard() {
               Em Preparação
               <span className="text-sm font-normal text-muted-foreground">({preparingOrders.length})</span>
             </h2>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => navigate('/admin/orders')}
+            >
               Ver todos
               <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
