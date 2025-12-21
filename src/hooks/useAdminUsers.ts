@@ -25,6 +25,7 @@ interface CreateUserData {
 }
 
 interface UpdateUserData {
+  email?: string;
   name?: string;
   phone?: string | null;
   isActive?: boolean;
@@ -41,43 +42,41 @@ export function useAdminUsers() {
       setLoading(true);
       setError(null);
 
-      // Fetch profiles with their roles (only internal users: kitchen and motoboy)
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('role', ['kitchen', 'motoboy']);
-
-      if (rolesError) throw rolesError;
-
-      if (!rolesData || rolesData.length === 0) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
         setUsers([]);
+        setLoading(false);
         return;
       }
 
-      const userIds = rolesData.map(r => r.user_id);
+      // Use edge function to get users with emails
+      const response = await supabase.functions.invoke('admin-list-users');
 
-      // Fetch profiles for these users
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, name, phone, is_active, created_at')
-        .in('id', userIds);
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
 
-      if (profilesError) throw profilesError;
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Erro ao carregar usuários');
+      }
 
-      // We need to get emails from auth - we'll use a workaround by fetching from the session
-      // For now, we'll use a placeholder and update when we have admin access
-      const usersWithRoles: InternalUser[] = (profilesData || []).map(profile => {
-        const roleRecord = rolesData.find(r => r.user_id === profile.id);
-        return {
-          id: profile.id,
-          email: '', // Will be populated from edge function or stored separately
-          name: profile.name || 'Sem nome',
-          phone: profile.phone,
-          role: (roleRecord?.role || 'client') as AppRole,
-          isActive: profile.is_active ?? true,
-          createdAt: profile.created_at || new Date().toISOString(),
-        };
-      });
+      const usersWithRoles: InternalUser[] = (response.data.users || []).map((user: {
+        id: string;
+        email: string;
+        name: string;
+        phone: string | null;
+        role: string;
+        isActive: boolean;
+        createdAt: string;
+      }) => ({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        role: user.role as AppRole,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+      }));
 
       setUsers(usersWithRoles);
     } catch (err) {
@@ -132,35 +131,29 @@ export function useAdminUsers() {
 
   const updateUser = async (userId: string, data: UpdateUserData): Promise<{ success: boolean; error?: string }> => {
     try {
-      const user = users.find(u => u.id === userId);
-      const updateData: Record<string, unknown> = {};
-      const changes: Record<string, unknown> = {};
-
-      if (data.name !== undefined) {
-        updateData.name = data.name;
-        changes.name = { from: user?.name, to: data.name };
-      }
-      if (data.phone !== undefined) {
-        updateData.phone = data.phone;
-        changes.phone = { from: user?.phone, to: data.phone };
-      }
-      if (data.isActive !== undefined) {
-        updateData.is_active = data.isActive;
-        changes.is_active = { from: user?.isActive, to: data.isActive };
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        throw new Error('Não autenticado');
       }
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', userId);
-
-      if (updateError) throw updateError;
-
-      // Log the action
-      await logUserAction('update_user', userId, user?.name || 'Unknown', {
-        changes,
-        role: user?.role,
+      // Use edge function to update user (required for email changes)
+      const response = await supabase.functions.invoke('admin-update-user', {
+        body: {
+          userId,
+          email: data.email,
+          name: data.name,
+          phone: data.phone,
+          isActive: data.isActive,
+        },
       });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Erro ao atualizar usuário');
+      }
 
       toast.success('Usuário atualizado com sucesso!');
       await fetchUsers();

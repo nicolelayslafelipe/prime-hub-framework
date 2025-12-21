@@ -97,12 +97,13 @@ export default function AdminUsers() {
   };
 
   const handleEditUser = async () => {
-    if (!selectedUser || !formData.name) {
+    if (!selectedUser || !formData.name || !formData.email) {
       return;
     }
 
     setIsSubmitting(true);
     const result = await updateUser(selectedUser.id, {
+      email: formData.email !== selectedUser.email ? formData.email : undefined,
       name: formData.name,
       phone: formData.phone || null,
       isActive: formData.isActive,
@@ -229,7 +230,8 @@ export default function AdminUsers() {
                           </div>
                           <div>
                             <p className="font-medium">{user.name}</p>
-                            <p className="text-sm text-muted-foreground">{user.phone || 'Sem telefone'}</p>
+                            <p className="text-sm text-muted-foreground">{user.email || 'Sem email'}</p>
+                            {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
                           </div>
                         </div>
                       </td>
@@ -403,6 +405,16 @@ export default function AdminUsers() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Nome completo"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email *</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="email@exemplo.com"
               />
             </div>
             <div className="space-y-2">
