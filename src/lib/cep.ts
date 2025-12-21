@@ -52,15 +52,15 @@ export function formatCepForDisplay(cep: string): string {
 }
 
 /**
- * Fetches address data from ViaCEP API with robust error handling
+ * Fetches address data via Edge Function proxy (bypasses CORS)
  * Distinguishes between: CEP not found, network errors, and invalid CEP
  */
 export async function fetchAddressByCep(cep: string): Promise<CepSearchResult> {
   const cleanCep = formatCep(cep);
   
-  console.log('[CEP] Iniciando busca para:', cleanCep);
+  console.log('[CEP] Iniciando busca via backend para:', cleanCep);
   
-  // Validate CEP format
+  // Validate CEP format locally first
   if (cleanCep.length !== 8) {
     console.log('[CEP] CEP inválido - não tem 8 dígitos');
     return { 
@@ -75,14 +75,20 @@ export async function fetchAddressByCep(cep: string): Promise<CepSearchResult> {
   const timeoutId = setTimeout(() => {
     console.log('[CEP] Timeout - abortando requisição');
     controller.abort();
-  }, 5000); // 5 second timeout
+  }, 8000); // 8 second timeout for Edge Function
 
   try {
-    const url = `https://viacep.com.br/ws/${cleanCep}/json/`;
-    console.log('[CEP] Fazendo requisição para:', url);
+    // Call Edge Function as proxy
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const url = `${supabaseUrl}/functions/v1/cep-lookup?cep=${cleanCep}`;
+    
+    console.log('[CEP] Chamando Edge Function:', url);
     
     const response = await fetch(url, {
       method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       signal: controller.signal,
     });
     
@@ -90,42 +96,21 @@ export async function fetchAddressByCep(cep: string): Promise<CepSearchResult> {
     
     console.log('[CEP] Status da resposta:', response.status);
     
-    if (!response.ok) {
-      console.log('[CEP] Erro HTTP:', response.status);
-      return { 
-        success: false, 
-        errorType: 'network_error', 
-        errorMessage: `Erro ao conectar ao serviço (HTTP ${response.status})` 
+    const result = await response.json();
+    console.log('[CEP] Resposta do backend:', result);
+
+    if (result.success && result.data) {
+      return {
+        success: true,
+        data: result.data,
+      };
+    } else {
+      return {
+        success: false,
+        errorType: result.errorType || 'network_error',
+        errorMessage: result.error || 'Erro ao buscar CEP',
       };
     }
-
-    const data: ViaCepResponse = await response.json();
-    console.log('[CEP] Dados recebidos:', data);
-
-    // ViaCEP returns { erro: true } when CEP is not found
-    if (data.erro === true) {
-      console.log('[CEP] CEP não encontrado na base do ViaCEP');
-      return { 
-        success: false, 
-        errorType: 'not_found', 
-        errorMessage: 'CEP não encontrado' 
-      };
-    }
-
-    // Success - map response to our format
-    const result: CepSearchResult = {
-      success: true,
-      data: {
-        street: data.logradouro || '',
-        neighborhood: data.bairro || '',
-        city: data.localidade || '',
-        state: data.uf || '',
-        isPartial: !data.logradouro, // Generic city CEP if no street
-      }
-    };
-    
-    console.log('[CEP] Resultado final:', result);
-    return result;
 
   } catch (error: unknown) {
     clearTimeout(timeoutId);
@@ -146,7 +131,7 @@ export async function fetchAddressByCep(cep: string): Promise<CepSearchResult> {
     return { 
       success: false, 
       errorType: 'network_error', 
-      errorMessage: 'Não foi possível conectar ao serviço de CEP. Tente novamente.' 
+      errorMessage: 'Não foi possível conectar ao servidor. Tente novamente.' 
     };
   }
 }
