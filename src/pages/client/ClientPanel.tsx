@@ -241,9 +241,19 @@ export default function ClientPanel() {
             
             {/* Store Info */}
             <div className="flex flex-col md:flex-row md:items-center gap-6">
-              <div className="h-20 w-20 rounded-xl bg-primary flex items-center justify-center shadow-glow-gold">
-                <Store className="h-10 w-10 text-primary-foreground" />
-              </div>
+              {config.establishment.logo ? (
+                <div className="h-20 w-20 rounded-xl overflow-hidden border border-border/30 bg-background shadow-glow-gold">
+                  <img 
+                    src={config.establishment.logo} 
+                    alt={config.establishment.name || 'Logo'}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="h-20 w-20 rounded-xl bg-primary flex items-center justify-center shadow-glow-gold">
+                  <Store className="h-10 w-10 text-primary-foreground" />
+                </div>
+              )}
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-3 mb-2">
                   <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{config.establishment.name}</h1>
