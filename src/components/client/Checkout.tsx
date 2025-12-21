@@ -15,6 +15,7 @@ import { useOrders } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientAddresses, ClientAddress } from '@/hooks/useClientAddresses';
 import { useClientPreferences } from '@/hooks/useClientPreferences';
+import { useClientPaymentMethods } from '@/hooks/useClientPaymentMethods';
 import { useDeliveryFeeCalculation } from '@/hooks/useDeliveryFeeCalculation';
 import { useETACalculation } from '@/hooks/useETACalculation';
 import { useMercadoPagoPayment } from '@/hooks/useMercadoPagoPayment';
@@ -39,7 +40,8 @@ import {
   Briefcase,
   Loader2,
   Clock,
-  Wallet
+  Wallet,
+  XCircle
 } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -48,15 +50,6 @@ interface CheckoutProps {
   onClose: () => void;
   onOrderPlaced: (order: Order) => void;
 }
-
-const paymentMethods = [
-  { id: 'pix_online', label: 'PIX Online', icon: Smartphone, description: 'Pague agora via PIX', isOnline: true },
-  { id: 'card_online', label: 'Cartão Online', icon: Wallet, description: 'Pague agora com cartão', isOnline: true },
-  { id: 'pix', label: 'PIX na Entrega', icon: Smartphone, description: 'Pague na entrega' },
-  { id: 'credit', label: 'Cartão de Crédito', icon: CreditCard, description: 'Máquina na entrega' },
-  { id: 'debit', label: 'Cartão de Débito', icon: CreditCard, description: 'Máquina na entrega' },
-  { id: 'cash', label: 'Dinheiro', icon: Banknote, description: 'Pagamento na entrega' },
-];
 
 const labelIcons: Record<string, React.ReactNode> = {
   'Casa': <Home className="h-4 w-4" />,
@@ -92,6 +85,12 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     refetch: refetchAddresses
   } = useClientAddresses();
   const { preferences, updatePreference } = useClientPreferences();
+  const { 
+    methods: paymentMethods, 
+    isLoading: isLoadingPaymentMethods,
+    isMethodActive,
+    getMethodById 
+  } = useClientPaymentMethods();
   const { calculateFee, isCalculating: isCalculatingFee, lastResult: feeResult } = useDeliveryFeeCalculation();
   const { calculateETA, isCalculating: isCalculatingETA, lastResult: etaResult } = useETACalculation();
   const { 
@@ -426,6 +425,22 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
       return;
     }
 
+    // Verificar se estabelecimento está aberto
+    if (!config.establishment.isOpen) {
+      toast.error('Estabelecimento fechado', {
+        description: 'Não é possível fazer pedidos no momento',
+      });
+      return;
+    }
+
+    // Verificar se método de pagamento está ativo
+    if (!isMethodActive(paymentMethod)) {
+      toast.error('Forma de pagamento indisponível', {
+        description: 'Selecione outra forma de pagamento',
+      });
+      return;
+    }
+
     // Validate address
     if (!validateOrderAddress()) {
       toast.error('Endereço incompleto', {
@@ -658,11 +673,16 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     return !!selectedAddressId && validateAddress(getSelectedAddress());
   };
 
+  // Verificar se estabelecimento está aberto
+  const isEstablishmentOpen = config.establishment.isOpen;
+
   const canPlaceOrder = 
     items.length > 0 && 
     customerPhone.trim().length > 0 &&
     isAddressValid() && 
     !isOutsideDeliveryArea &&
+    isEstablishmentOpen &&
+    paymentMethods.length > 0 &&
     !(paymentMethod === 'cash' && needsChange && changeForNumber < total);
 
   // Mark field as touched
@@ -707,11 +727,26 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
         {step === 'form' ? (
           <>
             <SheetHeader className="p-6 border-b border-border">
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={handleClose}>
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <SheetTitle className="text-xl font-bold">Finalizar Pedido</SheetTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Button variant="ghost" size="icon" onClick={handleClose}>
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <SheetTitle className="text-xl font-bold">Finalizar Pedido</SheetTitle>
+                </div>
+                
+                {/* Status do estabelecimento */}
+                {isEstablishmentOpen ? (
+                  <span className="px-2 py-1 rounded-md bg-accent/15 text-accent text-xs font-medium flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Aberto
+                  </span>
+                ) : (
+                  <span className="px-2 py-1 rounded-md bg-destructive/15 text-destructive text-xs font-medium flex items-center gap-1">
+                    <XCircle className="h-3 w-3" />
+                    Fechado
+                  </span>
+                )}
               </div>
             </SheetHeader>
 
@@ -958,31 +993,56 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                   <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs text-primary font-bold">3</div>
                   Forma de pagamento
                 </h3>
-                <RadioGroup value={paymentMethod} onValueChange={(value) => {
-                  setPaymentMethod(value);
-                  if (value !== 'cash') {
-                    setNeedsChange(false);
-                    setChangeFor('');
-                  }
-                }} className="space-y-2">
-                  {paymentMethods.map((method) => (
-                    <label
-                      key={method.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                        paymentMethod === method.id 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-border bg-secondary/30 hover:bg-secondary/50'
-                      }`}
-                    >
-                      <RadioGroupItem value={method.id} />
-                      <method.icon className="h-5 w-5 text-muted-foreground" />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{method.label}</p>
-                        <p className="text-xs text-muted-foreground">{method.description}</p>
-                      </div>
-                    </label>
-                  ))}
-                </RadioGroup>
+                
+                {/* Alerta quando estabelecimento fechado */}
+                {!isEstablishmentOpen && (
+                  <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-center">
+                    <XCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+                    <p className="font-medium text-destructive">Estabelecimento Fechado</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Não é possível fazer pedidos no momento
+                    </p>
+                  </div>
+                )}
+                
+                {isLoadingPaymentMethods ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-14 w-full" />
+                    <Skeleton className="h-14 w-full" />
+                    <Skeleton className="h-14 w-full" />
+                  </div>
+                ) : paymentMethods.length === 0 ? (
+                  <div className="p-4 rounded-lg bg-muted/50 border border-border text-center">
+                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Nenhuma forma de pagamento disponível</p>
+                  </div>
+                ) : (
+                  <RadioGroup value={paymentMethod} onValueChange={(value) => {
+                    setPaymentMethod(value);
+                    if (value !== 'cash') {
+                      setNeedsChange(false);
+                      setChangeFor('');
+                    }
+                  }} className="space-y-2">
+                    {paymentMethods.map((method) => (
+                      <label
+                        key={method.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                          paymentMethod === method.id 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-border bg-secondary/30 hover:bg-secondary/50'
+                        }`}
+                      >
+                        <RadioGroupItem value={method.id} />
+                        <method.icon className="h-5 w-5 text-muted-foreground" />
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{method.label}</p>
+                          <p className="text-xs text-muted-foreground">{method.description}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </RadioGroup>
+                )}
 
                 {/* Cash change options */}
                 {paymentMethod === 'cash' && (
@@ -1112,7 +1172,12 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
 
             {/* Footer */}
             <div className="p-4 border-t border-border bg-card space-y-2">
-              {isOutsideDeliveryArea && (
+              {!isEstablishmentOpen && (
+                <p className="text-xs text-center text-destructive font-medium">
+                  Estabelecimento fechado no momento
+                </p>
+              )}
+              {isOutsideDeliveryArea && isEstablishmentOpen && (
                 <p className="text-xs text-center text-destructive">
                   Não é possível finalizar: endereço fora da área de entrega
                 </p>
@@ -1127,6 +1192,8 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                     <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                     Processando...
                   </>
+                ) : !isEstablishmentOpen ? (
+                  'Estabelecimento Fechado'
                 ) : isOutsideDeliveryArea ? (
                   'Fora da Área de Entrega'
                 ) : (
