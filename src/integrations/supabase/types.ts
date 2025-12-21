@@ -65,6 +65,66 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      api_integrations: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          environment: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          status: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          environment?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          status?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          environment?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       banners: {
         Row: {
           created_at: string
@@ -188,6 +248,96 @@ export type Database = {
         }
         Relationships: []
       }
+      loyalty_rewards: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          points_cost: number
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          points_cost: number
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          points_cost?: number
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      loyalty_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          minimum_redemption: number | null
+          points_per_real: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          minimum_redemption?: number | null
+          points_per_real?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          minimum_redemption?: number | null
+          points_per_real?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      message_templates: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          name: string
+          type: string
+          updated_at: string | null
+          variables: string[] | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          name: string
+          type: string
+          updated_at?: string | null
+          variables?: string[] | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string | null
+          variables?: string[] | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           additions: string[] | null
@@ -288,6 +438,42 @@ export type Database = {
           status?: string
           subtotal?: number
           total?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      payment_methods: {
+        Row: {
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          max_change: number | null
+          name: string
+          sort_order: number | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_change?: number | null
+          name: string
+          sort_order?: number | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_change?: number | null
+          name?: string
+          sort_order?: number | null
+          type?: string
           updated_at?: string | null
         }
         Relationships: []
