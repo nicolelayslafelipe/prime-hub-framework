@@ -13,11 +13,13 @@ import { SidebarProvider } from "./contexts/SidebarContext";
 import { SoundProvider } from "./contexts/SoundContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary";
+import { InstallPrompt } from "./components/shared/InstallPrompt";
 
 // Pages
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/auth/AuthPage";
 import ResetPassword from "./pages/auth/ResetPassword";
+import Install from "./pages/Install";
 
 import ClientPanel from "./pages/client/ClientPanel";
 import ClientProfile from "./pages/client/ClientProfile";
@@ -77,6 +79,7 @@ const App = () => (
                       <Routes>
                         {/* Public Routes */}
                         <Route path="/" element={<ClientPanel />} />
+                        <Route path="/install" element={<Install />} />
                         <Route path="/auth/reset-password" element={<ResetPassword />} />
                         <Route path="/auth" element={<AuthPage />} />
 
@@ -133,6 +136,7 @@ const App = () => (
                         {/* 404 */}
                         <Route path="*" element={<NotFound />} />
                       </Routes>
+                      <InstallPrompt />
                     </BrowserRouter>
                     </TooltipProvider>
                   </CartProvider>
