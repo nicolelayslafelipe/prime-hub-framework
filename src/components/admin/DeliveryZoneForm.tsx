@@ -30,12 +30,14 @@ export function DeliveryZoneForm({ onAdd, defaultFee, defaultMinOrder, defaultTi
 
     setIsSearching(true);
     try {
-      const address = await fetchAddressByCep(cep);
-      if (address) {
-        setName(address.neighborhood || address.city);
+      const result = await fetchAddressByCep(cep);
+      if (result.success && result.data) {
+        setName(result.data.neighborhood || result.data.city);
         toast.success('Bairro encontrado!');
-      } else {
+      } else if (result.errorType === 'not_found') {
         toast.error('CEP não encontrado');
+      } else {
+        toast.error(result.errorMessage || 'Não foi possível buscar o CEP. Tente novamente.');
       }
     } catch {
       toast.error('Erro ao buscar CEP');

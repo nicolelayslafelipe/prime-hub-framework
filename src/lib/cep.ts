@@ -15,7 +15,16 @@ export interface AddressFromCep {
   neighborhood: string;
   city: string;
   state: string;
-  isPartial: boolean; // Indicates if it's a generic city CEP (no street/neighborhood)
+  isPartial: boolean;
+}
+
+export type CepErrorType = 'not_found' | 'network_error' | 'invalid_cep';
+
+export interface CepSearchResult {
+  success: boolean;
+  data?: AddressFromCep;
+  errorType?: CepErrorType;
+  errorMessage?: string;
 }
 
 /**
@@ -43,48 +52,101 @@ export function formatCepForDisplay(cep: string): string {
 }
 
 /**
- * Fetches address data from ViaCEP API
- * @param cep - Brazilian postal code (CEP)
- * @returns Address data or null if not found
+ * Fetches address data from ViaCEP API with robust error handling
+ * Distinguishes between: CEP not found, network errors, and invalid CEP
  */
-export async function fetchAddressByCep(cep: string): Promise<AddressFromCep | null> {
+export async function fetchAddressByCep(cep: string): Promise<CepSearchResult> {
   const cleanCep = formatCep(cep);
   
-  if (!isValidCep(cleanCep)) {
-    return null;
+  console.log('[CEP] Iniciando busca para:', cleanCep);
+  
+  // Validate CEP format
+  if (cleanCep.length !== 8) {
+    console.log('[CEP] CEP inválido - não tem 8 dígitos');
+    return { 
+      success: false, 
+      errorType: 'invalid_cep', 
+      errorMessage: 'CEP deve ter 8 dígitos' 
+    };
   }
 
+  // Create abort controller for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    console.log('[CEP] Timeout - abortando requisição');
+    controller.abort();
+  }, 5000); // 5 second timeout
+
   try {
-    const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
+    const url = `https://viacep.com.br/ws/${cleanCep}/json/`;
+    console.log('[CEP] Fazendo requisição para:', url);
+    
+    const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
+      signal: controller.signal,
     });
     
+    clearTimeout(timeoutId);
+    
+    console.log('[CEP] Status da resposta:', response.status);
+    
     if (!response.ok) {
-      console.error('ViaCEP API error:', response.status);
-      return null;
+      console.log('[CEP] Erro HTTP:', response.status);
+      return { 
+        success: false, 
+        errorType: 'network_error', 
+        errorMessage: `Erro ao conectar ao serviço (HTTP ${response.status})` 
+      };
     }
 
     const data: ViaCepResponse = await response.json();
+    console.log('[CEP] Dados recebidos:', data);
 
-    // Check if CEP was not found (API returns { erro: true })
-    if (data.erro) {
-      return null;
+    // ViaCEP returns { erro: true } when CEP is not found
+    if (data.erro === true) {
+      console.log('[CEP] CEP não encontrado na base do ViaCEP');
+      return { 
+        success: false, 
+        errorType: 'not_found', 
+        errorMessage: 'CEP não encontrado' 
+      };
     }
 
-    // Return whatever data we have - client fills in the rest
-    // isPartial = true when we don't have street info (generic city CEP)
-    return {
-      street: data.logradouro || '',
-      neighborhood: data.bairro || '',
-      city: data.localidade || '',
-      state: data.uf || '',
-      isPartial: !data.logradouro,
+    // Success - map response to our format
+    const result: CepSearchResult = {
+      success: true,
+      data: {
+        street: data.logradouro || '',
+        neighborhood: data.bairro || '',
+        city: data.localidade || '',
+        state: data.uf || '',
+        isPartial: !data.logradouro, // Generic city CEP if no street
+      }
     };
-  } catch (error) {
-    console.error('Error fetching address from CEP:', error);
-    return null;
+    
+    console.log('[CEP] Resultado final:', result);
+    return result;
+
+  } catch (error: unknown) {
+    clearTimeout(timeoutId);
+    
+    const err = error as Error;
+    console.log('[CEP] Erro capturado:', err.name, err.message);
+    
+    // Handle timeout (AbortError)
+    if (err.name === 'AbortError') {
+      return { 
+        success: false, 
+        errorType: 'network_error', 
+        errorMessage: 'Tempo limite excedido. Tente novamente.' 
+      };
+    }
+    
+    // Handle other network errors
+    return { 
+      success: false, 
+      errorType: 'network_error', 
+      errorMessage: 'Não foi possível conectar ao serviço de CEP. Tente novamente.' 
+    };
   }
 }
