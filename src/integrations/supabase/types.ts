@@ -294,6 +294,7 @@ export type Database = {
           phone: string | null
           price_per_km: number | null
           primary_color: string | null
+          selected_theme: string | null
           show_banner: boolean | null
           state: string | null
           total_reviews: number | null
@@ -333,6 +334,7 @@ export type Database = {
           phone?: string | null
           price_per_km?: number | null
           primary_color?: string | null
+          selected_theme?: string | null
           show_banner?: boolean | null
           state?: string | null
           total_reviews?: number | null
@@ -372,6 +374,7 @@ export type Database = {
           phone?: string | null
           price_per_km?: number | null
           primary_color?: string | null
+          selected_theme?: string | null
           show_banner?: boolean | null
           state?: string | null
           total_reviews?: number | null
