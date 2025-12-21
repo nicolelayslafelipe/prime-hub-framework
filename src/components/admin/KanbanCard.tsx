@@ -1,8 +1,9 @@
 import { Order } from '@/types';
 import { cn } from '@/lib/utils';
-import { Clock, CreditCard, MapPin, GripVertical } from 'lucide-react';
+import { Clock, CreditCard, MapPin, GripVertical, Monitor, Store, Package, UtensilsCrossed } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
 
 interface KanbanCardProps {
   order: Order;
@@ -11,6 +12,19 @@ interface KanbanCardProps {
   onClick?: () => void;
   isDragging?: boolean;
 }
+
+const getOrderTypeInfo = (orderType?: string) => {
+  switch (orderType) {
+    case 'pdv_counter':
+      return { label: 'Balcão', icon: Store, color: 'bg-accent text-accent-foreground' };
+    case 'pdv_pickup':
+      return { label: 'Retirada', icon: Package, color: 'bg-primary text-primary-foreground' };
+    case 'pdv_table':
+      return { label: 'Mesa', icon: UtensilsCrossed, color: 'bg-orange-500 text-white' };
+    default:
+      return null;
+  }
+};
 
 export function KanbanCard({
   order,
@@ -23,6 +37,9 @@ export function KanbanCard({
     addSuffix: true,
     locale: ptBR,
   });
+
+  const isPDV = order.orderType?.startsWith('pdv_');
+  const orderTypeInfo = getOrderTypeInfo(order.orderType);
 
   return (
     <div
@@ -43,8 +60,19 @@ export function KanbanCard({
       {/* Order Header */}
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="font-bold text-primary">#{order.orderNumber}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-bold text-primary">#{order.orderNumber}</p>
+            {isPDV && orderTypeInfo && (
+              <Badge className={cn('text-[10px] px-1.5 py-0 h-5', orderTypeInfo.color)}>
+                <orderTypeInfo.icon className="h-3 w-3 mr-1" />
+                {orderTypeInfo.label}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm font-medium">{order.customerName}</p>
+          {order.orderType === 'pdv_table' && order.tableNumber && (
+            <p className="text-xs text-muted-foreground">Mesa {order.tableNumber}</p>
+          )}
         </div>
         <span className="text-lg font-bold text-accent">
           R$ {order.total.toFixed(2)}
@@ -57,10 +85,12 @@ export function KanbanCard({
           <CreditCard className="h-3.5 w-3.5" />
           <span>{order.paymentMethod}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <MapPin className="h-3.5 w-3.5" />
-          <span className="truncate">{order.customerAddress}</span>
-        </div>
+        {!isPDV && (
+          <div className="flex items-center gap-2">
+            <MapPin className="h-3.5 w-3.5" />
+            <span className="truncate">{order.customerAddress}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <Clock className="h-3.5 w-3.5" />
           <span>{timeAgo}</span>

@@ -53,6 +53,7 @@ import AdminCoupons from "./pages/admin/Coupons";
 import AdminCouponReports from "./pages/admin/CouponReports";
 import AdminAuditLogs from "./pages/admin/AuditLogs";
 import AdminPDV from "./pages/admin/PDV";
+import AdminPDVHistory from "./pages/admin/PDVHistory";
 // Panel Pages
 import KitchenPanel from "./pages/kitchen/KitchenPanel";
 import MotoboyPanel from "./pages/motoboy/MotoboyPanel";
@@ -91,6 +92,7 @@ const App = () => (
                         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                           <Route path="/admin" element={<SidebarProvider><AdminDashboard /></SidebarProvider>} />
                           <Route path="/admin/pdv" element={<SidebarProvider><AdminPDV /></SidebarProvider>} />
+                          <Route path="/admin/pdv/history" element={<SidebarProvider><AdminPDVHistory /></SidebarProvider>} />
                           <Route path="/admin/kanban" element={<SidebarProvider><AdminKanban /></SidebarProvider>} />
                           <Route path="/admin/orders" element={<SidebarProvider><AdminOrders /></SidebarProvider>} />
                           <Route path="/admin/clients" element={<SidebarProvider><AdminClients /></SidebarProvider>} />
