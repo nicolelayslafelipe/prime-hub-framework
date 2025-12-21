@@ -111,9 +111,13 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   const [customerPhone, setCustomerPhone] = useState(profile?.phone || '');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   
-  // Address state
+  // Address state - Unified type for address selection
+  type DeliveryAddressType = 'saved' | 'custom';
+  const [deliveryAddressType, setDeliveryAddressType] = useState<DeliveryAddressType>('saved');
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  
+  // Derived state for backward compatibility
+  const showNewAddressForm = deliveryAddressType === 'custom';
   
   const initialNewAddress: NewAddressForm = {
     zip_code: '',
@@ -172,14 +176,17 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
 
   // Initialize selected address from saved addresses
   useEffect(() => {
-    if (!isLoadingAddresses && addresses.length > 0 && !selectedAddressId) {
-      const defaultAddr = getDefaultAddress();
-      if (defaultAddr) {
-        setSelectedAddressId(defaultAddr.id);
-        setShowNewAddressForm(false);
+    if (!isLoadingAddresses) {
+      if (addresses.length > 0 && !selectedAddressId) {
+        const defaultAddr = getDefaultAddress();
+        if (defaultAddr) {
+          setDeliveryAddressType('saved');
+          setSelectedAddressId(defaultAddr.id);
+        }
+      } else if (addresses.length === 0) {
+        // No saved addresses, force custom mode
+        setDeliveryAddressType('custom');
       }
-    } else if (!isLoadingAddresses && addresses.length === 0) {
-      setShowNewAddressForm(true);
     }
   }, [isLoadingAddresses, addresses, selectedAddressId, getDefaultAddress]);
 
@@ -271,7 +278,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   
   // Calculate fee when selecting a saved address with coordinates
   const handleSelectSavedAddress = useCallback(async (addr: ClientAddress) => {
-    setShowNewAddressForm(false);
+    setDeliveryAddressType('saved');
     setSelectedAddressId(addr.id);
     setAddressErrors([]);
     
@@ -650,7 +657,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     setStep('form');
     setNeedsChange(false);
     setChangeFor('');
-    setShowNewAddressForm(false);
+    setDeliveryAddressType('saved');
     setSelectedAddressId(null);
     resetNewAddressForm();
     resetPayment();
@@ -799,63 +806,71 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                   <div className="space-y-3">
                     {/* Saved addresses */}
                     <div className="space-y-2">
-                      {addresses.map((addr) => (
-                        <div
-                          key={addr.id}
-                          onClick={() => handleSelectSavedAddress(addr)}
-                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                            selectedAddressId === addr.id && !showNewAddressForm
-                              ? 'border-primary bg-primary/5' 
-                              : 'border-border bg-secondary/30 hover:bg-secondary/50'
-                          }`}
-                        >
-                          <div className={`h-4 w-4 rounded-full border-2 mt-1 flex items-center justify-center ${
-                            selectedAddressId === addr.id && !showNewAddressForm
-                              ? 'border-primary'
-                              : 'border-muted-foreground'
-                          }`}>
-                            {selectedAddressId === addr.id && !showNewAddressForm && (
-                              <div className="h-2 w-2 rounded-full bg-primary" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              {labelIcons[addr.label] || <MapPin className="h-4 w-4" />}
-                              <span className="font-medium text-sm">{addr.label}</span>
-                              {addr.is_default && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs flex items-center gap-0.5">
-                                  <Star className="h-3 w-3 fill-primary" />
-                                  Padrão
-                                </span>
+                      {addresses.map((addr) => {
+                        const isSelected = deliveryAddressType === 'saved' && selectedAddressId === addr.id;
+                        return (
+                          <div
+                            key={addr.id}
+                            onClick={() => handleSelectSavedAddress(addr)}
+                            className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                              isSelected
+                                ? 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20' 
+                                : 'border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground'
+                            }`}
+                          >
+                            <div className={`h-5 w-5 rounded-full border-2 mt-0.5 flex items-center justify-center transition-all ${
+                              isSelected
+                                ? 'border-primary bg-primary'
+                                : 'border-muted-foreground'
+                            }`}>
+                              {isSelected && (
+                                <CheckCircle2 className="h-3 w-3 text-primary-foreground" />
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {formatAddressForDisplay(addr)}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                {labelIcons[addr.label] || <MapPin className="h-4 w-4" />}
+                                <span className="font-medium text-sm">{addr.label}</span>
+                                {addr.is_default && (
+                                  <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs flex items-center gap-0.5">
+                                    <Star className="h-3 w-3 fill-primary" />
+                                    Padrão
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {formatAddressForDisplay(addr)}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                       
                       {/* New address option */}
                       <div
                         onClick={() => {
-                          setShowNewAddressForm(true);
+                          setDeliveryAddressType('custom');
                           setSelectedAddressId(null);
                           resetNewAddressForm();
+                          // Reset delivery calculations
+                          setCalculatedDeliveryFee(null);
+                          setDeliveryDistance(null);
+                          setIsOutsideDeliveryArea(false);
+                          setEstimatedTime(null);
                         }}
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                        className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                           showNewAddressForm
-                            ? 'border-primary bg-primary/5' 
-                            : 'border-border bg-secondary/30 hover:bg-secondary/50'
+                            ? 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20' 
+                            : 'border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground'
                         }`}
                       >
-                        <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all ${
                           showNewAddressForm
-                            ? 'border-primary'
+                            ? 'border-primary bg-primary'
                             : 'border-muted-foreground'
                         }`}>
                           {showNewAddressForm && (
-                            <div className="h-2 w-2 rounded-full bg-primary" />
+                            <CheckCircle2 className="h-3 w-3 text-primary-foreground" />
                           )}
                         </div>
                         <Plus className="h-4 w-4 text-muted-foreground" />
