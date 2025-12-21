@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCepSearch } from '@/hooks/useCepSearch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -41,7 +42,7 @@ import {
   Search,
   CheckCircle2
 } from 'lucide-react';
-import { fetchAddressByCep, formatCepForDisplay, isValidCep, formatCep } from '@/lib/cep';
+import { formatCepForDisplay, formatCep } from '@/lib/cep';
 
 const addressSchema = z.object({
   label: z.string().min(1, 'Informe um nome para o endereço'),
@@ -82,8 +83,9 @@ export default function ClientAddresses() {
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSearchingCep, setIsSearchingCep] = useState(false);
-  const [cepFound, setCepFound] = useState(false);
+
+  // Hook de busca de CEP
+  const { status: cepStatus, search: searchCep, reset: resetCepSearch, lastSearchedCep } = useCepSearch();
 
   const form = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
@@ -101,70 +103,54 @@ export default function ClientAddresses() {
     },
   });
 
-  const watchedCep = form.watch('zip_code');
-
-  // Auto-search CEP when valid - fills city, state, and neighborhood (if available)
-  const handleCepSearch = useCallback(async (cep: string) => {
-    const cleanCep = formatCep(cep);
+  // Handler de busca de CEP - chamado apenas no onBlur ou clique no botão
+  const handleCepSearch = useCallback(async () => {
+    const cleanCep = formatCep(form.getValues('zip_code') || '');
+    
+    // Só buscar se tem 8 dígitos
     if (cleanCep.length !== 8) {
-      setCepFound(false);
       return;
     }
-
-    setIsSearchingCep(true);
-    setCepFound(false);
-
-    try {
-      const addressData = await fetchAddressByCep(cleanCep);
+    
+    // Só buscar se é um CEP diferente do já buscado com sucesso
+    if (cleanCep === lastSearchedCep && cepStatus === 'success') {
+      return;
+    }
+    
+    const result = await searchCep(cleanCep);
+    
+    if (result) {
+      // Preencher campos com dados da API
+      form.setValue('city', result.city, { shouldValidate: true });
+      form.setValue('state', result.state, { shouldValidate: true });
       
-      if (addressData) {
-        // Always set city and state
-        form.setValue('city', addressData.city, { shouldValidate: true });
-        form.setValue('state', addressData.state, { shouldValidate: true });
-        
-        // Only set street/neighborhood if available from API
-        if (addressData.street) {
-          form.setValue('street', addressData.street, { shouldValidate: true });
-        }
-        if (addressData.neighborhood) {
-          form.setValue('neighborhood', addressData.neighborhood, { shouldValidate: true });
-        }
-        
-        setCepFound(true);
-        
-        if (addressData.isPartial) {
-          toast.info('CEP encontrado', {
-            description: `${addressData.city} - ${addressData.state}. Preencha rua e bairro.`,
-          });
-          setTimeout(() => {
-            document.getElementById('street')?.focus();
-          }, 100);
-        } else {
-          toast.success('Endereço encontrado!');
-          setTimeout(() => {
-            document.getElementById('number')?.focus();
-          }, 100);
-        }
-      } else {
-        toast.error('CEP não encontrado');
-        setCepFound(false);
+      if (result.street) {
+        form.setValue('street', result.street, { shouldValidate: true });
       }
-    } catch (err) {
-      console.error('CEP search error:', err);
-      toast.error('Erro ao buscar CEP');
-      setCepFound(false);
-    } finally {
-      setIsSearchingCep(false);
+      if (result.neighborhood) {
+        form.setValue('neighborhood', result.neighborhood, { shouldValidate: true });
+      }
+      
+      // Feedback ao usuário
+      if (result.isPartial) {
+        toast.info('CEP encontrado', {
+          description: `${result.city} - ${result.state}. Preencha rua e bairro.`,
+        });
+        setTimeout(() => {
+          document.getElementById('street')?.focus();
+        }, 100);
+      } else {
+        toast.success('Endereço encontrado!');
+        setTimeout(() => {
+          document.getElementById('number')?.focus();
+        }, 100);
+      }
+    } else {
+      toast.error('CEP não encontrado', {
+        description: 'Verifique o CEP e tente novamente.',
+      });
     }
-  }, [form]);
-
-  // Trigger CEP search when 8 digits are entered
-  useEffect(() => {
-    const cleanCep = formatCep(watchedCep || '');
-    if (cleanCep.length === 8 && !cepFound && !isSearchingCep) {
-      handleCepSearch(cleanCep);
-    }
-  }, [watchedCep, cepFound, isSearchingCep, handleCepSearch]);
+  }, [form, searchCep, lastSearchedCep, cepStatus]);
 
   useEffect(() => {
     if (user) {
@@ -192,7 +178,7 @@ export default function ClientAddresses() {
   };
 
   const handleOpenDialog = (address?: Address) => {
-    setCepFound(false);
+    resetCepSearch();
     if (address) {
       setEditingAddress(address);
       form.reset({
@@ -228,7 +214,7 @@ export default function ClientAddresses() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingAddress(null);
-    setCepFound(false);
+    resetCepSearch();
     form.reset();
   };
 
@@ -493,7 +479,7 @@ export default function ClientAddresses() {
               )}
             </div>
 
-            {/* CEP field with auto-search */}
+            {/* CEP field with manual search */}
             <div className="space-y-2">
               <Label htmlFor="zip_code">CEP</Label>
               <div className="relative">
@@ -502,20 +488,28 @@ export default function ClientAddresses() {
                   placeholder="00000-000"
                   value={form.watch('zip_code')}
                   onChange={handleCepChange}
+                  onBlur={handleCepSearch}
                   className="pr-10"
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {isSearchingCep ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                  onClick={handleCepSearch}
+                  disabled={cepStatus === 'loading'}
+                >
+                  {cepStatus === 'loading' ? (
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : cepFound ? (
-                    <CheckCircle2 className="h-4 w-4 text-success" />
+                  ) : cepStatus === 'success' ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
                   ) : (
                     <Search className="h-4 w-4 text-muted-foreground" />
                   )}
-                </div>
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Digite o CEP para preencher automaticamente
+                Digite o CEP e clique na lupa ou saia do campo para buscar
               </p>
               {form.formState.errors.zip_code && (
                 <p className="text-sm text-destructive">{form.formState.errors.zip_code.message}</p>

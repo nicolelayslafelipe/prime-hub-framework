@@ -15,7 +15,8 @@ import { useOrders } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientAddresses, ClientAddress } from '@/hooks/useClientAddresses';
 import { useClientPreferences } from '@/hooks/useClientPreferences';
-import { fetchAddressByCep, formatCepForDisplay, isValidCep, formatCep } from '@/lib/cep';
+import { useCepSearch } from '@/hooks/useCepSearch';
+import { formatCepForDisplay, formatCep } from '@/lib/cep';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, 
@@ -82,6 +83,9 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   } = useClientAddresses();
   const { preferences, updatePreference } = useClientPreferences();
   
+  // Hook de busca de CEP
+  const { status: cepStatus, search: searchCep, reset: resetCepSearch, lastSearchedCep } = useCepSearch();
+  
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [paymentMethod, setPaymentMethod] = useState('pix');
   const [notes, setNotes] = useState('');
@@ -103,8 +107,6 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   };
   
   const [newAddress, setNewAddress] = useState<NewAddressForm>(initialNewAddress);
-  const [isSearchingCep, setIsSearchingCep] = useState(false);
-  const [cepFound, setCepFound] = useState(false);
   
   // Change fields for cash payment
   const [needsChange, setNeedsChange] = useState(false);
@@ -117,10 +119,10 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   // Reset new address form
   const resetNewAddressForm = useCallback(() => {
     setNewAddress(initialNewAddress);
-    setCepFound(false);
+    resetCepSearch();
     setAddressErrors([]);
     setTouchedFields(new Set());
-  }, []);
+  }, [resetCepSearch]);
 
   const subtotal = getSubtotal();
   const deliveryFee = config.establishment.deliveryFee;
@@ -157,65 +159,52 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     }
   }, [profile]);
 
-  // CEP auto-search - fills city, state, and neighborhood (if available)
-  const handleCepSearch = useCallback(async (cep: string) => {
-    const cleanCep = formatCep(cep);
+  // Handler de busca de CEP - chamado apenas no onBlur ou clique no botão
+  const handleCepSearch = useCallback(async () => {
+    const cleanCep = formatCep(newAddress.zip_code);
+    
+    // Só buscar se tem 8 dígitos
     if (cleanCep.length !== 8) {
-      setCepFound(false);
       return;
     }
-
-    setIsSearchingCep(true);
-    setCepFound(false);
-
-    try {
-      const addressData = await fetchAddressByCep(cleanCep);
+    
+    // Só buscar se é um CEP diferente do já buscado com sucesso
+    if (cleanCep === lastSearchedCep && cepStatus === 'success') {
+      return;
+    }
+    
+    const result = await searchCep(cleanCep);
+    
+    if (result) {
+      // Preencher campos com dados da API
+      setNewAddress(prev => ({
+        ...prev,
+        city: result.city,
+        state: result.state,
+        street: result.street || prev.street,
+        neighborhood: result.neighborhood || prev.neighborhood,
+      }));
       
-      if (addressData) {
-        // Always set city and state
-        setNewAddress(prev => ({
-          ...prev,
-          city: addressData.city,
-          state: addressData.state,
-          // Only set street/neighborhood if available, otherwise keep what user typed
-          street: addressData.street || prev.street,
-          neighborhood: addressData.neighborhood || prev.neighborhood,
-        }));
-        setCepFound(true);
-        
-        if (addressData.isPartial) {
-          toast.info('CEP encontrado', {
-            description: `${addressData.city} - ${addressData.state}. Preencha rua e bairro.`,
-          });
-          setTimeout(() => {
-            document.getElementById('checkout-street')?.focus();
-          }, 100);
-        } else {
-          toast.success('Endereço encontrado!');
-          setTimeout(() => {
-            document.getElementById('checkout-number')?.focus();
-          }, 100);
-        }
+      // Feedback ao usuário
+      if (result.isPartial) {
+        toast.info('CEP encontrado', {
+          description: `${result.city} - ${result.state}. Preencha rua e bairro.`,
+        });
+        setTimeout(() => {
+          document.getElementById('checkout-street')?.focus();
+        }, 100);
       } else {
-        toast.error('CEP não encontrado');
-        setCepFound(false);
+        toast.success('Endereço encontrado!');
+        setTimeout(() => {
+          document.getElementById('checkout-number')?.focus();
+        }, 100);
       }
-    } catch (err) {
-      console.error('CEP search error:', err);
-      toast.error('Erro ao buscar CEP');
-      setCepFound(false);
-    } finally {
-      setIsSearchingCep(false);
+    } else {
+      toast.error('CEP não encontrado', {
+        description: 'Verifique o CEP e tente novamente.',
+      });
     }
-  }, []);
-
-  // Trigger CEP search when 8 digits are entered
-  useEffect(() => {
-    const cleanCep = formatCep(newAddress.zip_code || '');
-    if (cleanCep.length === 8 && !cepFound && !isSearchingCep) {
-      handleCepSearch(cleanCep);
-    }
-  }, [newAddress.zip_code, cepFound, isSearchingCep, handleCepSearch]);
+  }, [newAddress.zip_code, searchCep, lastSearchedCep, cepStatus]);
 
   const getSelectedAddress = (): ClientAddress | null => {
     if (selectedAddressId) {
@@ -558,18 +547,28 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                           placeholder="00000-000"
                           value={newAddress.zip_code}
                           onChange={(e) => handleCepChange(e.target.value)}
-                          onBlur={() => markFieldTouched('zip_code')}
+                          onBlur={() => {
+                            markFieldTouched('zip_code');
+                            handleCepSearch();
+                          }}
                           className={`pr-10 bg-background ${getFieldValidationClass('zip_code', newAddress.zip_code)}`}
                         />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          {isSearchingCep ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                          onClick={handleCepSearch}
+                          disabled={cepStatus === 'loading'}
+                        >
+                          {cepStatus === 'loading' ? (
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          ) : cepFound ? (
+                          ) : cepStatus === 'success' ? (
                             <CheckCircle2 className="h-4 w-4 text-green-500" />
                           ) : (
                             <Search className="h-4 w-4 text-muted-foreground" />
                           )}
-                        </div>
+                        </Button>
                       </div>
                     </div>
                     
@@ -699,55 +698,41 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                   ))}
                 </RadioGroup>
 
-                {/* Change fields for cash payment */}
+                {/* Cash change options */}
                 {paymentMethod === 'cash' && (
-                  <div className="space-y-4 p-4 rounded-lg bg-muted/50 border border-border animate-fade-in">
+                  <div className="space-y-3 p-3 rounded-lg bg-muted/50 border border-border">
                     <div className="flex items-center gap-3">
-                      <Checkbox 
+                      <Checkbox
                         id="needs-change"
                         checked={needsChange}
-                        onCheckedChange={(checked) => {
-                          setNeedsChange(checked as boolean);
-                          if (!checked) setChangeFor('');
-                        }}
+                        onCheckedChange={(checked) => setNeedsChange(checked === true)}
                       />
-                      <Label htmlFor="needs-change" className="font-medium cursor-pointer">
-                        Precisa de troco?
-                      </Label>
+                      <Label htmlFor="needs-change" className="cursor-pointer">Preciso de troco</Label>
                     </div>
-
+                    
                     {needsChange && (
-                      <div className="space-y-3 animate-fade-in">
-                        <div className="space-y-2">
-                          <Label htmlFor="change-for">Troco para quanto?</Label>
-                          <div className="relative">
-                            <Coins className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              id="change-for"
-                              type="number"
-                              placeholder="Ex: 100.00"
-                              value={changeFor}
-                              onChange={(e) => setChangeFor(e.target.value)}
-                              min={total}
-                              step="0.01"
-                              className="pl-10 bg-background"
-                            />
-                          </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="change-for">Troco para quanto?</Label>
+                        <div className="relative">
+                          <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="change-for"
+                            type="number"
+                            placeholder="0,00"
+                            value={changeFor}
+                            onChange={(e) => setChangeFor(e.target.value)}
+                            className="pl-9 bg-background"
+                          />
                         </div>
-
-                        {changeForNumber > 0 && (
-                          <div className={`p-3 rounded-lg ${changeForNumber >= total ? 'bg-accent/10 border border-accent/20' : 'bg-destructive/10 border border-destructive/20'}`}>
-                            {changeForNumber >= total ? (
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">Troco a receber:</span>
-                                <span className="text-lg font-bold text-accent">R$ {changeAmount.toFixed(2)}</span>
-                              </div>
-                            ) : (
-                              <p className="text-sm text-destructive font-medium">
-                                O valor deve ser maior que o total do pedido (R$ {total.toFixed(2)})
-                              </p>
-                            )}
-                          </div>
+                        {changeForNumber > 0 && changeForNumber >= total && (
+                          <p className="text-xs text-muted-foreground">
+                            Troco: <span className="font-medium text-foreground">R$ {changeAmount.toFixed(2)}</span>
+                          </p>
+                        )}
+                        {changeForNumber > 0 && changeForNumber < total && (
+                          <p className="text-xs text-destructive">
+                            O valor deve ser maior que o total do pedido (R$ {total.toFixed(2)})
+                          </p>
                         )}
                       </div>
                     )}
@@ -757,97 +742,75 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
 
               <Separator />
 
-              {/* Notes */}
-              <div className="space-y-4">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs text-primary font-bold">4</div>
-                  Observações
-                </h3>
-                <Textarea 
-                  placeholder="Alguma observação sobre o pedido? (opcional)"
+              {/* Order Notes */}
+              <div className="space-y-3">
+                <Label htmlFor="notes">Observações (opcional)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Ex: Sem cebola, apartamento 101..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="bg-secondary/50 resize-none"
-                  rows={3}
+                  className="bg-secondary/50 min-h-[80px]"
                 />
               </div>
 
+              <Separator />
+
               {/* Order Summary */}
-              <div className="card-premium p-4 space-y-3">
-                <h4 className="font-semibold text-sm">Resumo do pedido</h4>
-                {items.map((item) => (
-                  <div key={item.product.id} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {item.quantity}x {item.product.name}
-                    </span>
-                    <span className="font-mono">R$ {(item.product.price * item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
-                <Separator />
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-mono">R$ {subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Entrega</span>
-                  <span className="font-mono">R$ {deliveryFee.toFixed(2)}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between font-bold">
-                  <span>Total</span>
-                  <span className="text-primary font-mono">R$ {total.toFixed(2)}</span>
-                </div>
-                
-                {/* Change info in summary */}
-                {paymentMethod === 'cash' && needsChange && changeForNumber >= total && (
-                  <>
-                    <Separator />
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Coins className="h-3 w-3" />
-                        Troco para
+              <div className="space-y-3">
+                <h3 className="font-semibold">Resumo do pedido</h3>
+                <div className="space-y-2">
+                  {items.map((item) => (
+                    <div key={item.product.id} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {item.quantity}x {item.product.name}
                       </span>
-                      <span className="font-mono">R$ {changeForNumber.toFixed(2)}</span>
+                      <span>R$ {(item.product.price * item.quantity).toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-sm font-medium text-accent">
-                      <span>Troco</span>
-                      <span className="font-mono">R$ {changeAmount.toFixed(2)}</span>
-                    </div>
-                  </>
-                )}
+                  ))}
+                </div>
+                <Separator />
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>R$ {subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Taxa de entrega</span>
+                    <span>R$ {deliveryFee.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-lg pt-2">
+                    <span>Total</span>
+                    <span className="text-primary">R$ {total.toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="p-4 border-t border-border">
+            {/* Footer */}
+            <div className="p-4 border-t border-border bg-card">
               <Button 
-                className="w-full h-12 font-semibold text-base"
+                className="w-full h-12 text-base font-semibold" 
                 onClick={handlePlaceOrder}
                 disabled={!canPlaceOrder}
               >
                 Confirmar Pedido
               </Button>
-              {!canPlaceOrder && items.length > 0 && (
-                <p className="text-xs text-muted-foreground text-center mt-2">
-                  {!customerPhone.trim() ? 'Informe seu telefone para continuar' : 
-                   !isAddressValid() ? 'Preencha o endereço de entrega para continuar' :
-                   paymentMethod === 'cash' && needsChange && changeForNumber < total ? 'Informe um valor válido para o troco' : ''}
-                </p>
-              )}
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-scale-in">
-            <div className="h-20 w-20 rounded-full bg-accent/10 flex items-center justify-center mb-6">
-              <CheckCircle2 className="h-10 w-10 text-accent" />
+          /* Success State */
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="h-20 w-20 rounded-full bg-green-500/10 flex items-center justify-center mb-6">
+              <CheckCircle2 className="h-10 w-10 text-green-500" />
             </div>
             <h2 className="text-2xl font-bold mb-2">Pedido Confirmado!</h2>
-            <p className="text-muted-foreground mb-6">
-              Seu pedido foi enviado para a cozinha
+            <p className="text-muted-foreground mb-4">
+              Seu pedido foi recebido e está sendo preparado.
             </p>
-            <div className="card-premium p-4 w-full">
-              <p className="text-sm text-muted-foreground mb-1">Tempo estimado</p>
-              <p className="text-2xl font-bold text-primary">{config.establishment.estimatedDeliveryTime} min</p>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Tempo estimado: {config.establishment.estimatedDeliveryTime || 45} min
+            </p>
           </div>
         )}
       </SheetContent>
