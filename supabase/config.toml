@@ -25,3 +25,6 @@ verify_jwt = false
 
 [functions.calculate-delivery-fee]
 verify_jwt = false
+
+[functions.calculate-eta]
+verify_jwt = false

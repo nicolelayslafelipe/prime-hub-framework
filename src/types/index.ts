@@ -91,6 +91,9 @@ export interface EstablishmentSettings {
   establishmentLatitude?: number;
   establishmentLongitude?: number;
   maxDeliveryRadius?: number;
+  // ETA settings
+  averagePrepTime?: number;
+  peakTimeAdjustment?: number;
 }
 
 export interface ThemeSettings {

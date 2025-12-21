@@ -120,6 +120,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             establishmentLatitude: data.establishment_latitude || undefined,
             establishmentLongitude: data.establishment_longitude || undefined,
             maxDeliveryRadius: data.max_delivery_radius || 10,
+            // ETA settings
+            averagePrepTime: data.average_prep_time || 15,
+            peakTimeAdjustment: data.peak_time_adjustment || 10,
           },
         }));
       }
@@ -189,6 +192,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       if (settings.establishmentLatitude !== undefined) updateData.establishment_latitude = settings.establishmentLatitude;
       if (settings.establishmentLongitude !== undefined) updateData.establishment_longitude = settings.establishmentLongitude;
       if (settings.maxDeliveryRadius !== undefined) updateData.max_delivery_radius = settings.maxDeliveryRadius;
+      // ETA settings
+      if (settings.averagePrepTime !== undefined) updateData.average_prep_time = settings.averagePrepTime;
+      if (settings.peakTimeAdjustment !== undefined) updateData.peak_time_adjustment = settings.peakTimeAdjustment;
 
       if (Object.keys(updateData).length > 0) {
         const { error: updateError } = await supabase

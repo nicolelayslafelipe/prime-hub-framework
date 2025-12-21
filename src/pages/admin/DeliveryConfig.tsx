@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Truck, MapPin, Loader2, Calculator, Navigation } from 'lucide-react';
+import { Truck, MapPin, Loader2, Calculator, Navigation, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminDeliveryConfig() {
@@ -34,6 +34,10 @@ export default function AdminDeliveryConfig() {
   const [establishmentLng, setEstablishmentLng] = useState<number | null>(null);
   const [establishmentAddress, setEstablishmentAddress] = useState('');
   
+  // ETA settings
+  const [averagePrepTime, setAveragePrepTime] = useState(15);
+  const [peakTimeAdjustment, setPeakTimeAdjustment] = useState(10);
+  
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -51,6 +55,9 @@ export default function AdminDeliveryConfig() {
       setEstablishmentLat(config.establishment.establishmentLatitude || null);
       setEstablishmentLng(config.establishment.establishmentLongitude || null);
       setEstablishmentAddress(config.establishment.address || '');
+      // ETA settings
+      setAveragePrepTime(config.establishment.averagePrepTime || 15);
+      setPeakTimeAdjustment(config.establishment.peakTimeAdjustment || 10);
     }
   }, [config.establishment, configLoading]);
 
@@ -95,8 +102,10 @@ export default function AdminDeliveryConfig() {
         establishmentLatitude: establishmentLat || undefined,
         establishmentLongitude: establishmentLng || undefined,
         address: establishmentAddress || config.establishment.address,
+        averagePrepTime,
+        peakTimeAdjustment,
       });
-      toast.success('Configurações de taxa por distância salvas!');
+      toast.success('Configurações salvas!');
     } catch (error) {
       toast.error('Erro ao salvar configurações');
     } finally {
@@ -278,9 +287,59 @@ export default function AdminDeliveryConfig() {
                 </p>
               </div>
 
+              {/* ETA Configuration */}
+              <Separator />
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <div>
+                    <h5 className="text-sm font-medium">Tempo Estimado (ETA)</h5>
+                    <p className="text-xs text-muted-foreground">
+                      Tempo de preparo + deslocamento calculado pelo Mapbox
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Tempo de Preparo (min)</Label>
+                    <Input 
+                      type="number" 
+                      value={averagePrepTime} 
+                      onChange={e => setAveragePrepTime(Number(e.target.value))} 
+                      min={5}
+                      max={120}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Tempo médio para preparar pedidos
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Ajuste Horário de Pico (min)</Label>
+                    <Input 
+                      type="number" 
+                      value={peakTimeAdjustment} 
+                      onChange={e => setPeakTimeAdjustment(Number(e.target.value))} 
+                      min={0}
+                      max={60}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Tempo extra em horários movimentados
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Exemplo:</strong> Preparo ({averagePrepTime} min) + Deslocamento (~15 min) = <span className="font-semibold text-primary">{averagePrepTime + 15}-{averagePrepTime + 25} min</span>
+                  </p>
+                </div>
+              </div>
+
               <Button onClick={handleSaveDistanceFee} disabled={isSaving} className="w-full">
                 {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Salvar Configurações de Distância
+                Salvar Configurações
               </Button>
             </div>
           )}
