@@ -83,6 +83,13 @@ export interface EstablishmentSettings {
   address: string;
   phone: string;
   whatsapp?: string;
+  // Distance-based fee settings
+  distanceFeeEnabled?: boolean;
+  baseDeliveryFee?: number;
+  pricePerKm?: number;
+  minDistanceIncluded?: number;
+  establishmentLatitude?: number;
+  establishmentLongitude?: number;
 }
 
 export interface ThemeSettings {

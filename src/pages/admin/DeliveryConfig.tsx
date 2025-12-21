@@ -1,22 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 import { StatusToggle } from '@/components/admin/StatusToggle';
 import { DeliveryZoneForm } from '@/components/admin/DeliveryZoneForm';
 import { DeliveryZoneList } from '@/components/admin/DeliveryZoneList';
+import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
+import { GeocodedAddress } from '@/hooks/useAddressSearch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Truck, MapPin, Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Truck, MapPin, Loader2, Calculator, Navigation } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminDeliveryConfig() {
   const { config, updateEstablishment, toggleDelivery, isLoading: configLoading } = useConfig();
   const { zones, isLoading: zonesLoading, addZone, updateZone, deleteZone, toggleZone } = useDeliveryZones();
   
+  // Default settings
   const [fee, setFee] = useState(0);
   const [time, setTime] = useState(0);
   const [minOrder, setMinOrder] = useState(0);
+  
+  // Distance-based fee settings
+  const [distanceFeeEnabled, setDistanceFeeEnabled] = useState(false);
+  const [baseFee, setBaseFee] = useState(5);
+  const [pricePerKm, setPricePerKm] = useState(2);
+  const [minDistanceIncluded, setMinDistanceIncluded] = useState(2);
+  const [establishmentLat, setEstablishmentLat] = useState<number | null>(null);
+  const [establishmentLng, setEstablishmentLng] = useState<number | null>(null);
+  const [establishmentAddress, setEstablishmentAddress] = useState('');
+  
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -24,18 +40,74 @@ export default function AdminDeliveryConfig() {
       setFee(config.establishment.deliveryFee);
       setTime(config.establishment.estimatedDeliveryTime);
       setMinOrder(config.establishment.minOrderValue);
+      
+      // Distance-based fee settings
+      setDistanceFeeEnabled(config.establishment.distanceFeeEnabled || false);
+      setBaseFee(config.establishment.baseDeliveryFee || 5);
+      setPricePerKm(config.establishment.pricePerKm || 2);
+      setMinDistanceIncluded(config.establishment.minDistanceIncluded || 2);
+      setEstablishmentLat(config.establishment.establishmentLatitude || null);
+      setEstablishmentLng(config.establishment.establishmentLongitude || null);
+      setEstablishmentAddress(config.establishment.address || '');
     }
   }, [config.establishment, configLoading]);
 
+  const handleAddressSelect = useCallback((address: GeocodedAddress) => {
+    setEstablishmentLat(address.latitude);
+    setEstablishmentLng(address.longitude);
+    const fullAddress = `${address.street}, ${address.number} - ${address.neighborhood}, ${address.city} - ${address.state}`;
+    setEstablishmentAddress(fullAddress);
+    toast.success('Localização do estabelecimento definida!');
+  }, []);
+
   const handleSaveDefaults = async () => {
     setIsSaving(true);
-    await updateEstablishment({ 
-      deliveryFee: fee, 
-      estimatedDeliveryTime: time, 
-      minOrderValue: minOrder 
-    });
-    toast.success('Configurações padrão salvas!');
-    setIsSaving(false);
+    try {
+      await updateEstablishment({ 
+        deliveryFee: fee, 
+        estimatedDeliveryTime: time, 
+        minOrderValue: minOrder 
+      });
+      toast.success('Configurações padrão salvas!');
+    } catch (error) {
+      toast.error('Erro ao salvar configurações');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveDistanceFee = async () => {
+    if (distanceFeeEnabled && (!establishmentLat || !establishmentLng)) {
+      toast.error('Defina a localização do estabelecimento para usar taxa por distância');
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      await updateEstablishment({ 
+        distanceFeeEnabled,
+        baseDeliveryFee: baseFee,
+        pricePerKm,
+        minDistanceIncluded,
+        establishmentLatitude: establishmentLat || undefined,
+        establishmentLongitude: establishmentLng || undefined,
+        address: establishmentAddress || config.establishment.address,
+      });
+      toast.success('Configurações de taxa por distância salvas!');
+    } catch (error) {
+      toast.error('Erro ao salvar configurações');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Calculate example fee
+  const calculateExampleFee = (distance: number) => {
+    if (distance <= minDistanceIncluded) {
+      return baseFee;
+    }
+    const extraDistance = distance - minDistanceIncluded;
+    return baseFee + (extraDistance * pricePerKm);
   };
 
   if (configLoading) {
@@ -70,83 +142,199 @@ export default function AdminDeliveryConfig() {
           />
         </div>
 
-        {/* Default Settings */}
+        {/* Distance-Based Fee */}
         <div className="card-premium p-6 space-y-4">
-          <h4 className="font-medium">Configurações Padrão</h4>
-          <p className="text-sm text-muted-foreground">
-            Valores padrão para zonas que não têm configuração específica
-          </p>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm text-muted-foreground">Taxa (R$)</label>
-              <Input 
-                type="number" 
-                value={fee} 
-                onChange={e => setFee(Number(e.target.value))} 
-                min={0}
-                step={0.5}
-              />
+          <div className="flex items-center gap-4 mb-2">
+            <div className="p-3 rounded-lg bg-primary/10">
+              <Calculator className="h-6 w-6 text-primary" />
             </div>
-            <div>
-              <label className="text-sm text-muted-foreground">Tempo (min)</label>
-              <Input 
-                type="number" 
-                value={time} 
-                onChange={e => setTime(Number(e.target.value))} 
-                min={0}
-              />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">Mínimo (R$)</label>
-              <Input 
-                type="number" 
-                value={minOrder} 
-                onChange={e => setMinOrder(Number(e.target.value))} 
-                min={0}
-              />
-            </div>
-          </div>
-          <Button onClick={handleSaveDefaults} disabled={isSaving} className="w-full">
-            {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Salvar Configurações Padrão
-          </Button>
-        </div>
-
-        {/* Delivery Zones */}
-        <div className="card-premium p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <MapPin className="h-5 w-5 text-primary" />
-            <div>
-              <h4 className="font-medium">Zonas de Entrega</h4>
+            <div className="flex-1">
+              <h4 className="font-semibold">Taxa por Distância</h4>
               <p className="text-sm text-muted-foreground">
-                Configure bairros com taxas e tempos específicos
+                Calcular taxa automaticamente com base na distância
               </p>
             </div>
+            <Switch
+              checked={distanceFeeEnabled}
+              onCheckedChange={setDistanceFeeEnabled}
+            />
           </div>
 
-          <DeliveryZoneForm 
-            onAdd={addZone}
-            defaultFee={fee}
-            defaultMinOrder={minOrder}
-            defaultTime={time}
-          />
+          {distanceFeeEnabled && (
+            <div className="space-y-4 pt-4 border-t border-border animate-fade-in">
+              {/* Establishment Location */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Navigation className="h-4 w-4" />
+                  Localização do Estabelecimento
+                </Label>
+                <AddressAutocomplete
+                  placeholder="Buscar endereço do estabelecimento..."
+                  onAddressSelect={handleAddressSelect}
+                />
+                {establishmentLat && establishmentLng && (
+                  <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                    <p className="text-sm text-muted-foreground mb-1">Endereço selecionado:</p>
+                    <p className="text-sm font-medium">{establishmentAddress}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Coordenadas: {establishmentLat.toFixed(6)}, {establishmentLng.toFixed(6)}
+                    </p>
+                  </div>
+                )}
+              </div>
 
-          {zonesLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Separator />
+
+              {/* Fee Configuration */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm">Taxa Base (R$)</Label>
+                  <Input 
+                    type="number" 
+                    value={baseFee} 
+                    onChange={e => setBaseFee(Number(e.target.value))} 
+                    min={0}
+                    step={0.5}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Valor mínimo cobrado
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Valor/KM (R$)</Label>
+                  <Input 
+                    type="number" 
+                    value={pricePerKm} 
+                    onChange={e => setPricePerKm(Number(e.target.value))} 
+                    min={0}
+                    step={0.5}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Por km adicional
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Distância Inclusa (km)</Label>
+                  <Input 
+                    type="number" 
+                    value={minDistanceIncluded} 
+                    onChange={e => setMinDistanceIncluded(Number(e.target.value))} 
+                    min={0}
+                    step={0.5}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Sem custo extra
+                  </p>
+                </div>
+              </div>
+
+              {/* Example Calculations */}
+              <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+                <h5 className="text-sm font-medium mb-3">Exemplos de cálculo:</h5>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  {[2, 5, 10].map(distance => (
+                    <div key={distance} className="p-2 rounded bg-background">
+                      <p className="text-xs text-muted-foreground">{distance} km</p>
+                      <p className="text-lg font-bold text-primary">
+                        R$ {calculateExampleFee(distance).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 text-center">
+                  Fórmula: Taxa Base + (Distância - {minDistanceIncluded}km) × R$ {pricePerKm}/km
+                </p>
+              </div>
+
+              <Button onClick={handleSaveDistanceFee} disabled={isSaving} className="w-full">
+                {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Salvar Configurações de Distância
+              </Button>
             </div>
-          ) : (
-            <DeliveryZoneList
-              zones={zones}
+          )}
+        </div>
+
+        {/* Default Settings (when distance fee is disabled) */}
+        {!distanceFeeEnabled && (
+          <div className="card-premium p-6 space-y-4">
+            <h4 className="font-medium">Configurações Padrão</h4>
+            <p className="text-sm text-muted-foreground">
+              Valores padrão para zonas que não têm configuração específica
+            </p>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground">Taxa (R$)</label>
+                <Input 
+                  type="number" 
+                  value={fee} 
+                  onChange={e => setFee(Number(e.target.value))} 
+                  min={0}
+                  step={0.5}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Tempo (min)</label>
+                <Input 
+                  type="number" 
+                  value={time} 
+                  onChange={e => setTime(Number(e.target.value))} 
+                  min={0}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Mínimo (R$)</label>
+                <Input 
+                  type="number" 
+                  value={minOrder} 
+                  onChange={e => setMinOrder(Number(e.target.value))} 
+                  min={0}
+                />
+              </div>
+            </div>
+            <Button onClick={handleSaveDefaults} disabled={isSaving} className="w-full">
+              {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar Configurações Padrão
+            </Button>
+          </div>
+        )}
+
+        {/* Delivery Zones (only show when distance fee is disabled) */}
+        {!distanceFeeEnabled && (
+          <div className="card-premium p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <MapPin className="h-5 w-5 text-primary" />
+              <div>
+                <h4 className="font-medium">Zonas de Entrega</h4>
+                <p className="text-sm text-muted-foreground">
+                  Configure bairros com taxas e tempos específicos
+                </p>
+              </div>
+            </div>
+
+            <DeliveryZoneForm 
+              onAdd={addZone}
               defaultFee={fee}
               defaultMinOrder={minOrder}
               defaultTime={time}
-              onToggle={toggleZone}
-              onUpdate={updateZone}
-              onDelete={deleteZone}
             />
-          )}
-        </div>
+
+            {zonesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <DeliveryZoneList
+                zones={zones}
+                defaultFee={fee}
+                defaultMinOrder={minOrder}
+                defaultTime={time}
+                onToggle={toggleZone}
+                onUpdate={updateZone}
+                onDelete={deleteZone}
+              />
+            )}
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

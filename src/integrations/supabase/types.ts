@@ -268,18 +268,24 @@ export type Database = {
           address: string | null
           banner: string | null
           banner_text: string | null
+          base_delivery_fee: number | null
           created_at: string | null
           delivery_area: string | null
           delivery_fee: number | null
           description: string | null
+          distance_fee_enabled: boolean | null
+          establishment_latitude: number | null
+          establishment_longitude: number | null
           estimated_delivery_time: number | null
           id: string
           is_delivery_enabled: boolean | null
           is_open: boolean | null
           logo: string | null
+          min_distance_included: number | null
           min_order_value: number | null
           name: string
           phone: string | null
+          price_per_km: number | null
           show_banner: boolean | null
           updated_at: string | null
           whatsapp: string | null
@@ -288,18 +294,24 @@ export type Database = {
           address?: string | null
           banner?: string | null
           banner_text?: string | null
+          base_delivery_fee?: number | null
           created_at?: string | null
           delivery_area?: string | null
           delivery_fee?: number | null
           description?: string | null
+          distance_fee_enabled?: boolean | null
+          establishment_latitude?: number | null
+          establishment_longitude?: number | null
           estimated_delivery_time?: number | null
           id?: string
           is_delivery_enabled?: boolean | null
           is_open?: boolean | null
           logo?: string | null
+          min_distance_included?: number | null
           min_order_value?: number | null
           name?: string
           phone?: string | null
+          price_per_km?: number | null
           show_banner?: boolean | null
           updated_at?: string | null
           whatsapp?: string | null
@@ -308,18 +320,24 @@ export type Database = {
           address?: string | null
           banner?: string | null
           banner_text?: string | null
+          base_delivery_fee?: number | null
           created_at?: string | null
           delivery_area?: string | null
           delivery_fee?: number | null
           description?: string | null
+          distance_fee_enabled?: boolean | null
+          establishment_latitude?: number | null
+          establishment_longitude?: number | null
           estimated_delivery_time?: number | null
           id?: string
           is_delivery_enabled?: boolean | null
           is_open?: boolean | null
           logo?: string | null
+          min_distance_included?: number | null
           min_order_value?: number | null
           name?: string
           phone?: string | null
+          price_per_km?: number | null
           show_banner?: boolean | null
           updated_at?: string | null
           whatsapp?: string | null

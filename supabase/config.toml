@@ -1,7 +1,27 @@
 project_id = "lujdjwqbsqterbcvzyvo"
 
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[functions.admin-create-user]
+verify_jwt = true
+
+[functions.admin-delete-user]
+verify_jwt = true
+
+[functions.get-mapbox-token]
+verify_jwt = false
+
 [functions.geocode-address]
 verify_jwt = false
 
-[functions.get-mapbox-token]
+[functions.calculate-delivery-fee]
 verify_jwt = false
