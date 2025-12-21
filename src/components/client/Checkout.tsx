@@ -19,9 +19,12 @@ import { useClientPaymentMethods } from '@/hooks/useClientPaymentMethods';
 import { useDeliveryFeeCalculation } from '@/hooks/useDeliveryFeeCalculation';
 import { useETACalculation } from '@/hooks/useETACalculation';
 import { useMercadoPagoPayment } from '@/hooks/useMercadoPagoPayment';
+import { useBusinessHours } from '@/hooks/useBusinessHours';
+import { useCoupons } from '@/hooks/useCoupons';
 import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
 import { PaymentModal } from '@/components/client/PaymentModal';
 import { GeocodedAddress } from '@/hooks/useAddressSearch';
+import { formatBrazilianPhone, isValidBrazilianPhone } from '@/lib/formatPhone';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -41,7 +44,9 @@ import {
   Loader2,
   Clock,
   Wallet,
-  XCircle
+  XCircle,
+  Tag,
+  X
 } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -103,6 +108,15 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     resetPayment,
     retryPayment 
   } = useMercadoPagoPayment();
+  const { isCurrentlyOpen, getNextOpeningTime, isLoading: isLoadingHours } = useBusinessHours();
+  const {
+    appliedCoupon,
+    discount: couponDiscount,
+    isValidating: isValidatingCoupon,
+    applyCoupon,
+    removeCoupon,
+    incrementCouponUsage,
+  } = useCoupons();
   
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [paymentMethod, setPaymentMethod] = useState('pix_online');
@@ -110,6 +124,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   const [customerName, setCustomerName] = useState(profile?.name || '');
   const [customerPhone, setCustomerPhone] = useState(profile?.phone || '');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
   
   // Address state - Unified type for address selection
   type DeliveryAddressType = 'saved' | 'custom';
@@ -169,10 +184,26 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   
   // Use calculated fee if distance-based pricing is enabled and we have coordinates
   const deliveryFee = calculatedDeliveryFee !== null ? calculatedDeliveryFee : config.establishment.deliveryFee;
-  const total = subtotal + deliveryFee;
+  const totalBeforeDiscount = subtotal + deliveryFee;
+  const total = Math.max(0, totalBeforeDiscount - couponDiscount);
   
   const changeForNumber = parseFloat(changeFor) || 0;
   const changeAmount = changeForNumber > total ? changeForNumber - total : 0;
+
+  // Handle phone input with formatting
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatBrazilianPhone(e.target.value);
+    setCustomerPhone(formatted);
+  };
+
+  // Apply coupon handler
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    const success = await applyCoupon(couponCode, subtotal);
+    if (success) {
+      setCouponCode('');
+    }
+  };
 
   // Initialize selected address from saved addresses
   useEffect(() => {
@@ -697,14 +728,9 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     return !!selectedAddressId && validateAddress(getSelectedAddress());
   };
 
-  // Verificar se estabelecimento está aberto
-  const isEstablishmentOpen = config.establishment.isOpen;
-
-  // Validação de telefone brasileiro (10-11 dígitos)
-  const isValidBrazilianPhone = (phone: string): boolean => {
-    const cleanPhone = phone.replace(/\D/g, '');
-    return cleanPhone.length >= 10 && cleanPhone.length <= 11;
-  };
+  // Verificar se estabelecimento está aberto - combina toggle manual + horário automático
+  const isEstablishmentOpen = config.establishment.isOpen && (isLoadingHours || isCurrentlyOpen());
+  const nextOpeningTime = getNextOpeningTime();
 
   const isPhoneValid = isValidBrazilianPhone(customerPhone);
 
@@ -804,9 +830,9 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                     <Label htmlFor="phone">Telefone</Label>
                     <Input 
                       id="phone" 
-                      placeholder="(00) 00000-0000"
+                      placeholder="(11) 99999-9999"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      onChange={handlePhoneChange}
                       className={`bg-secondary/50 ${
                         customerPhone.trim().length > 0 && !isPhoneValid 
                           ? 'border-destructive focus-visible:ring-destructive' 
@@ -1108,6 +1134,51 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
 
               <Separator />
 
+              {/* Coupon Code */}
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-primary" />
+                  Cupom de desconto
+                </h3>
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-accent" />
+                      <div>
+                        <p className="font-medium text-sm text-accent">{appliedCoupon.code}</p>
+                        <p className="text-xs text-muted-foreground">{appliedCoupon.description}</p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={removeCoupon}
+                      className="h-8 w-8 p-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Digite o código"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      className="bg-secondary/50 uppercase"
+                    />
+                    <Button 
+                      variant="outline" 
+                      onClick={handleApplyCoupon}
+                      disabled={isValidatingCoupon || !couponCode.trim()}
+                    >
+                      {isValidatingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
               {/* Order Notes */}
               <div className="space-y-3">
                 <Label htmlFor="notes">Observações (opcional)</Label>
@@ -1156,6 +1227,17 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                     )}
                   </div>
                   
+                  {/* Coupon discount */}
+                  {appliedCoupon && couponDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-accent">
+                      <span className="flex items-center gap-1">
+                        <Tag className="h-3 w-3" />
+                        Cupom ({appliedCoupon.code})
+                      </span>
+                      <span>-R$ {couponDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
                   {/* Outside delivery area warning */}
                   {isOutsideDeliveryArea && (
                     <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 mt-2">
@@ -1193,9 +1275,12 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
             {/* Footer */}
             <div className="p-4 border-t border-border bg-card space-y-2">
               {!isEstablishmentOpen && (
-                <p className="text-xs text-center text-destructive font-medium">
-                  Estabelecimento fechado no momento
-                </p>
+                <div className="text-xs text-center text-destructive font-medium">
+                  <p>Estabelecimento fechado no momento</p>
+                  {nextOpeningTime && (
+                    <p className="text-muted-foreground mt-1">{nextOpeningTime}</p>
+                  )}
+                </div>
               )}
               {isOutsideDeliveryArea && isEstablishmentOpen && (
                 <p className="text-xs text-center text-destructive">
