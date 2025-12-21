@@ -227,6 +227,57 @@ export type Database = {
         }
         Relationships: []
       }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string | null
+          description: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean | null
+          max_discount: number | null
+          min_order_value: number | null
+          updated_at: string | null
+          usage_count: number | null
+          usage_limit: number | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          id?: string
+          is_active?: boolean | null
+          max_discount?: number | null
+          min_order_value?: number | null
+          updated_at?: string | null
+          usage_count?: number | null
+          usage_limit?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean | null
+          max_discount?: number | null
+          min_order_value?: number | null
+          updated_at?: string | null
+          usage_count?: number | null
+          usage_limit?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       delivery_zones: {
         Row: {
           created_at: string | null
