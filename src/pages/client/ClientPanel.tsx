@@ -55,6 +55,12 @@ export default function ClientPanel() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
 
+  // Helper to format review count
+  const formatReviewCount = (count: number) => {
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
+    return count.toString();
+  };
+
   // Get the current order from realtime data
   const currentOrder = currentOrderId 
     ? clientOrders.find(o => o.id === currentOrderId) || null 
@@ -266,9 +272,14 @@ export default function ClientPanel() {
                 </div>
                 <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1.5">
-                    <div className="flex">{[...Array(5)].map((_, i) => <Star key={i} className="h-3.5 w-3.5 text-primary fill-primary" />)}</div>
-                    <span className="font-medium text-foreground">4.9</span>
-                    <span>(1.2k)</span>
+                    <div className="flex">{[...Array(5)].map((_, i) => {
+                      const rating = config.establishment.averageRating || 5;
+                      const filled = i < Math.floor(rating);
+                      const half = i === Math.floor(rating) && rating % 1 >= 0.5;
+                      return <Star key={i} className={`h-3.5 w-3.5 ${filled || half ? 'text-primary fill-primary' : 'text-muted-foreground'}`} />;
+                    })}</div>
+                    <span className="font-medium text-foreground">{(config.establishment.averageRating || 5).toFixed(1)}</span>
+                    <span>({formatReviewCount(config.establishment.totalReviews || 0)})</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-4 w-4" />

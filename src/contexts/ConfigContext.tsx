@@ -123,6 +123,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             // ETA settings
             averagePrepTime: data.average_prep_time || 15,
             peakTimeAdjustment: data.peak_time_adjustment || 10,
+            // Rating
+            averageRating: data.average_rating ?? 5.0,
+            totalReviews: data.total_reviews ?? 0,
           },
         }));
       }
@@ -195,6 +198,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       // ETA settings
       if (settings.averagePrepTime !== undefined) updateData.average_prep_time = settings.averagePrepTime;
       if (settings.peakTimeAdjustment !== undefined) updateData.peak_time_adjustment = settings.peakTimeAdjustment;
+      // Rating
+      if (settings.averageRating !== undefined) updateData.average_rating = settings.averageRating;
+      if (settings.totalReviews !== undefined) updateData.total_reviews = settings.totalReviews;
 
       if (Object.keys(updateData).length > 0) {
         const { error: updateError } = await supabase

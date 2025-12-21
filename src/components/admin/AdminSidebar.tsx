@@ -99,7 +99,7 @@ const menuGroups: MenuGroup[] = [
   {
     title: 'Configurações',
     items: [
-      { icon: Settings, label: 'Sistema', path: '/admin/system' },
+      { icon: Store, label: 'Estabelecimento', path: '/admin/system' },
       { icon: Clock, label: 'Horários', path: '/admin/hours' },
       { icon: Truck, label: 'Entrega', path: '/admin/delivery-config' },
       { icon: MessageSquare, label: 'Mensagens', path: '/admin/messages' },

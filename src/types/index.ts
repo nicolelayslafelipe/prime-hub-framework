@@ -95,6 +95,9 @@ export interface EstablishmentSettings {
   // ETA settings
   averagePrepTime?: number;
   peakTimeAdjustment?: number;
+  // Rating
+  averageRating?: number;
+  totalReviews?: number;
 }
 
 export interface ThemeSettings {

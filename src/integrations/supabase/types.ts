@@ -267,6 +267,7 @@ export type Database = {
         Row: {
           address: string | null
           average_prep_time: number | null
+          average_rating: number | null
           banner: string | null
           banner_text: string | null
           base_delivery_fee: number | null
@@ -290,12 +291,14 @@ export type Database = {
           phone: string | null
           price_per_km: number | null
           show_banner: boolean | null
+          total_reviews: number | null
           updated_at: string | null
           whatsapp: string | null
         }
         Insert: {
           address?: string | null
           average_prep_time?: number | null
+          average_rating?: number | null
           banner?: string | null
           banner_text?: string | null
           base_delivery_fee?: number | null
@@ -319,12 +322,14 @@ export type Database = {
           phone?: string | null
           price_per_km?: number | null
           show_banner?: boolean | null
+          total_reviews?: number | null
           updated_at?: string | null
           whatsapp?: string | null
         }
         Update: {
           address?: string | null
           average_prep_time?: number | null
+          average_rating?: number | null
           banner?: string | null
           banner_text?: string | null
           base_delivery_fee?: number | null
@@ -348,6 +353,7 @@ export type Database = {
           phone?: string | null
           price_per_km?: number | null
           show_banner?: boolean | null
+          total_reviews?: number | null
           updated_at?: string | null
           whatsapp?: string | null
         }
