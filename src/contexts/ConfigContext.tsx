@@ -112,6 +112,11 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             address: data.address || 'Rua Exemplo, 123 - Centro',
             phone: data.phone || '(11) 99999-9999',
             whatsapp: data.whatsapp || '5511999999999',
+            // Location fields
+            city: data.city || 'São Paulo',
+            state: data.state || 'SP',
+            zipCode: data.zip_code || undefined,
+            neighborhood: data.neighborhood || undefined,
             // Distance-based fee settings
             distanceFeeEnabled: data.distance_fee_enabled || false,
             baseDeliveryFee: data.base_delivery_fee || 5,
@@ -128,6 +133,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             totalReviews: data.total_reviews ?? 0,
             // Login background
             useBannerAsLoginBg: data.use_banner_as_login_bg ?? true,
+            // Appearance
+            primaryColor: data.primary_color || '#10b981',
+            accentColor: data.accent_color || '#34d399',
+            useGradient: data.use_gradient || false,
           },
         }));
       }
@@ -189,6 +198,11 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       if (settings.address !== undefined) updateData.address = settings.address;
       if (settings.phone !== undefined) updateData.phone = settings.phone;
       if (settings.whatsapp !== undefined) updateData.whatsapp = settings.whatsapp;
+      // Location fields
+      if (settings.city !== undefined) updateData.city = settings.city;
+      if (settings.state !== undefined) updateData.state = settings.state;
+      if (settings.zipCode !== undefined) updateData.zip_code = settings.zipCode;
+      if (settings.neighborhood !== undefined) updateData.neighborhood = settings.neighborhood;
       // Distance-based fee settings
       if (settings.distanceFeeEnabled !== undefined) updateData.distance_fee_enabled = settings.distanceFeeEnabled;
       if (settings.baseDeliveryFee !== undefined) updateData.base_delivery_fee = settings.baseDeliveryFee;
@@ -205,6 +219,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       if (settings.totalReviews !== undefined) updateData.total_reviews = settings.totalReviews;
       // Login background
       if (settings.useBannerAsLoginBg !== undefined) updateData.use_banner_as_login_bg = settings.useBannerAsLoginBg;
+      // Appearance
+      if (settings.primaryColor !== undefined) updateData.primary_color = settings.primaryColor;
+      if (settings.accentColor !== undefined) updateData.accent_color = settings.accentColor;
+      if (settings.useGradient !== undefined) updateData.use_gradient = settings.useGradient;
 
       if (Object.keys(updateData).length > 0) {
         const { error: updateError } = await supabase
