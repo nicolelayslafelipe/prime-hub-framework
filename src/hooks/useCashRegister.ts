@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -40,9 +40,16 @@ export function useCashRegister() {
   const [currentRegister, setCurrentRegister] = useState<CashRegister | null>(null);
   const [transactions, setTransactions] = useState<CashTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Use ref to access latest transactions in closeRegister without adding as dependency
+  const transactionsRef = useRef<CashTransaction[]>([]);
+  transactionsRef.current = transactions;
 
   const fetchCurrentRegister = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     
     try {
       const { data, error } = await supabase
@@ -126,12 +133,20 @@ export function useCashRegister() {
   }, [user]);
 
   const closeRegister = useCallback(async (closingAmount: number, notes?: string) => {
-    if (!currentRegister) return false;
+    if (!currentRegister) {
+      toast.error('Nenhum caixa aberto');
+      return false;
+    }
 
     try {
-      // Calculate expected amount
-      const summary = getCashSummary();
-      const expectedAmount = currentRegister.opening_amount + summary.totalCash;
+      // Use ref to get latest transactions
+      const currentTransactions = transactionsRef.current;
+      const sales = currentTransactions.filter(t => t.type === 'sale');
+      const totalCash = sales
+        .filter(t => t.payment_method === 'cash' || t.payment_method === 'dinheiro')
+        .reduce((acc, t) => acc + t.amount, 0);
+      
+      const expectedAmount = currentRegister.opening_amount + totalCash;
       const difference = closingAmount - expectedAmount;
 
       const { error } = await supabase
@@ -192,8 +207,17 @@ export function useCashRegister() {
     return {
       totalSales: sales.reduce((acc, t) => acc + t.amount, 0),
       totalPix: sales.filter(t => t.payment_method === 'pix').reduce((acc, t) => acc + t.amount, 0),
-      totalCard: sales.filter(t => t.payment_method.includes('card')).reduce((acc, t) => acc + t.amount, 0),
-      totalCash: sales.filter(t => t.payment_method === 'cash').reduce((acc, t) => acc + t.amount, 0),
+      totalCard: sales.filter(t => 
+        t.payment_method.includes('card') || 
+        t.payment_method === 'cartao' || 
+        t.payment_method === 'cartão' ||
+        t.payment_method === 'credit' ||
+        t.payment_method === 'debit'
+      ).reduce((acc, t) => acc + t.amount, 0),
+      totalCash: sales.filter(t => 
+        t.payment_method === 'cash' || 
+        t.payment_method === 'dinheiro'
+      ).reduce((acc, t) => acc + t.amount, 0),
       transactionCount: sales.length,
     };
   }, [transactions]);

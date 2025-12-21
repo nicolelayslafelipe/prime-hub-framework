@@ -8,7 +8,20 @@ import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { CashRegisterDetails } from '@/components/admin/pdv/CashRegisterDetails';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { DollarSign, Clock, User, AlertTriangle, CheckCircle, Trash2, Eye } from 'lucide-react';
+import { 
+  DollarSign, 
+  Clock, 
+  User, 
+  AlertTriangle, 
+  CheckCircle, 
+  Trash2, 
+  Eye,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  ShoppingBag,
+  TrendingUp
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -26,8 +39,17 @@ interface CashRegisterRecord {
   closed_at: string | null;
 }
 
+interface TransactionSummary {
+  totalSales: number;
+  totalCash: number;
+  totalCard: number;
+  totalPix: number;
+  count: number;
+}
+
 interface CashRegisterWithUser extends CashRegisterRecord {
   userName?: string;
+  transactionSummary?: TransactionSummary;
 }
 
 export default function PDVHistory() {
@@ -51,8 +73,10 @@ export default function PDVHistory() {
 
       if (error) throw error;
 
+      const registerData = data || [];
+      
       // Fetch user names
-      const userIds = [...new Set((data || []).map(r => r.user_id))];
+      const userIds = [...new Set(registerData.map(r => r.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, name')
@@ -60,9 +84,44 @@ export default function PDVHistory() {
 
       const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
 
-      setRegisters((data || []).map(r => ({
+      // Fetch transaction summaries for each register
+      const registerIds = registerData.map(r => r.id);
+      const { data: transactions } = await supabase
+        .from('cash_transactions')
+        .select('cash_register_id, type, payment_method, amount')
+        .in('cash_register_id', registerIds)
+        .eq('type', 'sale');
+
+      // Group transactions by register
+      const summaryMap = new Map<string, TransactionSummary>();
+      (transactions || []).forEach(t => {
+        const existing = summaryMap.get(t.cash_register_id) || {
+          totalSales: 0,
+          totalCash: 0,
+          totalCard: 0,
+          totalPix: 0,
+          count: 0,
+        };
+        
+        existing.totalSales += t.amount;
+        existing.count += 1;
+        
+        const method = t.payment_method.toLowerCase();
+        if (method === 'cash' || method === 'dinheiro') {
+          existing.totalCash += t.amount;
+        } else if (method === 'pix') {
+          existing.totalPix += t.amount;
+        } else {
+          existing.totalCard += t.amount;
+        }
+        
+        summaryMap.set(t.cash_register_id, existing);
+      });
+
+      setRegisters(registerData.map(r => ({
         ...r,
         userName: profileMap.get(r.user_id) || 'Usuário',
+        transactionSummary: summaryMap.get(r.id),
       })) as CashRegisterWithUser[]);
     } catch (err) {
       console.error('Error fetching cash register history:', err);
@@ -76,7 +135,7 @@ export default function PDVHistory() {
     
     setIsDeleting(true);
     try {
-      // Delete transactions first (cascade should handle this but being explicit)
+      // Delete transactions first
       await supabase
         .from('cash_transactions')
         .delete()
@@ -112,6 +171,10 @@ export default function PDVHistory() {
     return format(new Date(dateStr), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   };
 
+  const formatDate = (dateStr: string) => {
+    return format(new Date(dateStr), "dd/MM/yyyy", { locale: ptBR });
+  };
+
   const getDuration = (opened: string, closed: string | null) => {
     if (!closed) return 'Em aberto';
     const start = new Date(opened);
@@ -125,12 +188,12 @@ export default function PDVHistory() {
   return (
     <AdminLayout
       title="Histórico de Caixas"
-      subtitle="Consulte os caixas anteriores"
+      subtitle="Consulte os caixas anteriores com detalhes de vendas"
     >
       <div className="space-y-4">
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full" />
+            <Skeleton key={i} className="h-40 w-full" />
           ))
         ) : registers.length === 0 ? (
           <Card>
@@ -145,15 +208,16 @@ export default function PDVHistory() {
               key={register.id} 
               className={cn(
                 "cursor-pointer hover:shadow-md transition-shadow",
-                register.status === 'open' && 'border-accent'
+                register.status === 'open' && 'border-accent ring-1 ring-accent/30'
               )}
               onClick={() => setSelectedRegister(register)}
             >
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <CardTitle className="text-lg">
-                      {formatDateTime(register.opened_at)}
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <DollarSign className="h-5 w-5 text-primary" />
+                      {formatDate(register.opened_at)}
                     </CardTitle>
                     <Badge variant={register.status === 'open' ? 'default' : 'secondary'}>
                       {register.status === 'open' ? 'Aberto' : 'Fechado'}
@@ -207,7 +271,8 @@ export default function PDVHistory() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* Info Row */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
@@ -234,8 +299,58 @@ export default function PDVHistory() {
                     </div>
                   )}
                 </div>
+
+                {/* Sales Summary */}
+                {register.transactionSummary && register.transactionSummary.count > 0 && (
+                  <div className="pt-3 border-t border-border">
+                    <div className="flex items-center gap-2 mb-3">
+                      <TrendingUp className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Resumo de Vendas</span>
+                      <Badge variant="secondary" className="ml-auto">
+                        <ShoppingBag className="h-3 w-3 mr-1" />
+                        {register.transactionSummary.count} vendas
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">Total Vendas</p>
+                        <p className="font-bold text-primary">
+                          {formatPrice(register.transactionSummary.totalSales)}
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-secondary text-center">
+                        <div className="flex items-center justify-center gap-1 mb-1">
+                          <Banknote className="h-3 w-3 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Dinheiro</p>
+                        </div>
+                        <p className="font-medium">
+                          {formatPrice(register.transactionSummary.totalCash)}
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-secondary text-center">
+                        <div className="flex items-center justify-center gap-1 mb-1">
+                          <CreditCard className="h-3 w-3 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Cartão</p>
+                        </div>
+                        <p className="font-medium">
+                          {formatPrice(register.transactionSummary.totalCard)}
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-secondary text-center">
+                        <div className="flex items-center justify-center gap-1 mb-1">
+                          <Smartphone className="h-3 w-3 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">PIX</p>
+                        </div>
+                        <p className="font-medium">
+                          {formatPrice(register.transactionSummary.totalPix)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {register.notes && (
-                  <div className="mt-3 pt-3 border-t border-border">
+                  <div className="pt-3 border-t border-border">
                     <p className="text-sm text-muted-foreground">
                       <span className="font-medium">Obs:</span> {register.notes}
                     </p>
