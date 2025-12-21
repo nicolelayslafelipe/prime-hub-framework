@@ -15,9 +15,9 @@ import { useOrders } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientAddresses, ClientAddress } from '@/hooks/useClientAddresses';
 import { useClientPreferences } from '@/hooks/useClientPreferences';
-import { useCepSearch } from '@/hooks/useCepSearch';
+import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
+import { GeocodedAddress } from '@/hooks/useAddressSearch';
 import { supabase } from '@/integrations/supabase/client';
-import { formatCepForDisplay, formatCep } from '@/lib/cep';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, 
@@ -30,11 +30,9 @@ import {
   Plus,
   Star,
   AlertCircle,
-  Loader2,
   Home,
   Building2,
-  Briefcase,
-  Search
+  Briefcase
 } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -65,6 +63,8 @@ interface NewAddressForm {
   neighborhood: string;
   city: string;
   state: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
@@ -83,9 +83,6 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     refetch: refetchAddresses
   } = useClientAddresses();
   const { preferences, updatePreference } = useClientPreferences();
-  
-  // Hook de busca de CEP
-  const { status: cepStatus, search: searchCep, reset: resetCepSearch, lastSearchedCep } = useCepSearch();
   
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [paymentMethod, setPaymentMethod] = useState('pix');
@@ -120,10 +117,9 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   // Reset new address form
   const resetNewAddressForm = useCallback(() => {
     setNewAddress(initialNewAddress);
-    resetCepSearch();
     setAddressErrors([]);
     setTouchedFields(new Set());
-  }, [resetCepSearch]);
+  }, []);
 
   const subtotal = getSubtotal();
   const deliveryFee = config.establishment.deliveryFee;
@@ -160,57 +156,30 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     }
   }, [profile]);
 
-  // Handler de busca de CEP - chamado apenas no onBlur ou clique no botão
-  const handleCepSearch = useCallback(async () => {
-    const cleanCep = formatCep(newAddress.zip_code);
+  // Handle address selection from Mapbox autocomplete
+  const handleAddressSelect = useCallback((address: GeocodedAddress) => {
+    setNewAddress({
+      street: address.street,
+      number: address.number,
+      neighborhood: address.neighborhood,
+      city: address.city,
+      state: address.state,
+      zip_code: address.postcode || '',
+      complement: '',
+      latitude: address.latitude,
+      longitude: address.longitude,
+    });
+    setAddressErrors([]);
     
-    // Só buscar se tem 8 dígitos
-    if (cleanCep.length !== 8) {
-      return;
+    // Focus on number field if empty
+    if (!address.number) {
+      setTimeout(() => {
+        document.getElementById('checkout-number')?.focus();
+      }, 100);
     }
     
-    // Só buscar se é um CEP diferente do já buscado com sucesso
-    if (cleanCep === lastSearchedCep && cepStatus === 'success') {
-      return;
-    }
-    
-    const result = await searchCep(cleanCep);
-    
-    if (result.success && result.data) {
-      // Preencher campos com dados da API
-      setNewAddress(prev => ({
-        ...prev,
-        city: result.data!.city,
-        state: result.data!.state,
-        street: result.data!.street || prev.street,
-        neighborhood: result.data!.neighborhood || prev.neighborhood,
-      }));
-      
-      // Feedback ao usuário
-      if (result.data.isPartial) {
-        toast.info('CEP encontrado', {
-          description: `${result.data.city} - ${result.data.state}. Preencha rua e bairro.`,
-        });
-        setTimeout(() => {
-          document.getElementById('checkout-street')?.focus();
-        }, 100);
-      } else {
-        toast.success('Endereço encontrado!');
-        setTimeout(() => {
-          document.getElementById('checkout-number')?.focus();
-        }, 100);
-      }
-    } else if (result.errorType === 'not_found') {
-      toast.error('CEP não encontrado', {
-        description: 'Verifique o CEP e tente novamente.',
-      });
-    } else {
-      // Erro de rede - permitir preenchimento manual
-      toast.warning('Não foi possível buscar o CEP', {
-        description: 'Você pode preencher o endereço manualmente.',
-      });
-    }
-  }, [newAddress.zip_code, searchCep, lastSearchedCep, cepStatus]);
+    toast.success('Endereço selecionado!');
+  }, []);
 
   const getSelectedAddress = (): ClientAddress | null => {
     if (selectedAddressId) {
@@ -224,7 +193,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
       let formatted = `${newAddress.street}, ${newAddress.number}`;
       if (newAddress.complement) formatted += ` - ${newAddress.complement}`;
       formatted += ` - ${newAddress.neighborhood}, ${newAddress.city} - ${newAddress.state}`;
-      formatted += ` (CEP: ${newAddress.zip_code})`;
+      if (newAddress.zip_code) formatted += ` (CEP: ${newAddress.zip_code})`;
       return formatted;
     }
     
@@ -239,9 +208,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   const validateOrderAddress = (): boolean => {
     if (showNewAddressForm) {
       const errors: string[] = [];
-      const cleanZip = formatCep(newAddress.zip_code);
       
-      if (cleanZip.length !== 8) errors.push('CEP inválido');
       if (!newAddress.street?.trim()) errors.push('Rua é obrigatória');
       if (!newAddress.number?.trim()) errors.push('Número é obrigatório');
       if (!newAddress.neighborhood?.trim()) errors.push('Bairro é obrigatório');
@@ -263,12 +230,12 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     if (!user || !showNewAddressForm) return;
     
     try {
-      // Verificar se já existe um endereço com o mesmo CEP e número
+      // Verificar se já existe um endereço similar
       const { data: existingAddresses } = await supabase
         .from('addresses')
         .select('id')
         .eq('user_id', user.id)
-        .eq('zip_code', newAddress.zip_code)
+        .eq('street', newAddress.street)
         .eq('number', newAddress.number);
       
       // Se já existe, não salvar duplicado
@@ -290,8 +257,10 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
           neighborhood: newAddress.neighborhood,
           city: newAddress.city,
           state: newAddress.state,
-          zip_code: newAddress.zip_code,
+          zip_code: newAddress.zip_code || '',
           is_default: isFirstAddress,
+          latitude: newAddress.latitude,
+          longitude: newAddress.longitude,
         });
       
       if (error) {
@@ -334,6 +303,15 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
 
     const orderNumber = 1000 + orders.length + 1;
     
+    // Get coordinates for order
+    let customerLatitude: number | undefined;
+    let customerLongitude: number | undefined;
+    
+    if (showNewAddressForm && newAddress.latitude && newAddress.longitude) {
+      customerLatitude = newAddress.latitude;
+      customerLongitude = newAddress.longitude;
+    }
+    
     const newOrder: Order = {
       id: `order-${Date.now()}`,
       orderNumber,
@@ -360,6 +338,8 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
       needsChange: paymentMethod === 'cash' && needsChange,
       changeFor: paymentMethod === 'cash' && needsChange ? changeForNumber : undefined,
       changeAmount: paymentMethod === 'cash' && needsChange ? changeAmount : undefined,
+      customerLatitude,
+      customerLongitude,
     };
 
     addOrder(newOrder);
@@ -391,16 +371,9 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     onClose();
   };
 
-  const handleCepChange = (value: string) => {
-    const formatted = formatCepForDisplay(value);
-    setNewAddress(prev => ({ ...prev, zip_code: formatted }));
-  };
-
   const isAddressValid = (): boolean => {
     if (showNewAddressForm) {
-      const cleanZip = formatCep(newAddress.zip_code);
       return !!(
-        cleanZip.length === 8 &&
         newAddress.street?.trim() &&
         newAddress.number?.trim() &&
         newAddress.neighborhood?.trim() &&
@@ -426,11 +399,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   useEffect(() => {
     if (showNewAddressForm && touchedFields.size > 0) {
       const errors: string[] = [];
-      const cleanZip = formatCep(newAddress.zip_code);
       
-      if (touchedFields.has('zip_code') && cleanZip.length > 0 && cleanZip.length !== 8) {
-        errors.push('CEP inválido');
-      }
       if (touchedFields.has('street') && !newAddress.street?.trim()) {
         errors.push('Rua é obrigatória');
       }
@@ -454,10 +423,6 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   // Get validation class for field
   const getFieldValidationClass = (fieldName: string, value: string | undefined): string => {
     if (!touchedFields.has(fieldName)) return '';
-    if (fieldName === 'zip_code') {
-      const cleanZip = formatCep(value || '');
-      return cleanZip.length > 0 && cleanZip.length !== 8 ? 'border-destructive focus-visible:ring-destructive' : '';
-    }
     return !value?.trim() ? 'border-destructive focus-visible:ring-destructive' : '';
   };
 
@@ -597,38 +562,19 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                 {/* New address form */}
                 {(showNewAddressForm || addresses.length === 0) && (
                   <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border animate-fade-in">
+                    {/* Mapbox Autocomplete */}
                     <div className="space-y-2">
-                      <Label htmlFor="checkout-cep">CEP <span className="text-destructive">*</span></Label>
-                      <div className="relative">
-                        <Input
-                          id="checkout-cep"
-                          placeholder="00000-000"
-                          value={newAddress.zip_code}
-                          onChange={(e) => handleCepChange(e.target.value)}
-                          onBlur={() => {
-                            markFieldTouched('zip_code');
-                            handleCepSearch();
-                          }}
-                          className={`pr-10 bg-background ${getFieldValidationClass('zip_code', newAddress.zip_code)}`}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                          onClick={handleCepSearch}
-                          disabled={cepStatus === 'loading'}
-                        >
-                          {cepStatus === 'loading' ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          ) : cepStatus === 'success' ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Search className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </Button>
-                      </div>
+                      <Label>Buscar endereço</Label>
+                      <AddressAutocomplete
+                        placeholder="Digite o endereço completo..."
+                        onAddressSelect={handleAddressSelect}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Busque e selecione seu endereço, ou preencha manualmente abaixo
+                      </p>
                     </div>
+                    
+                    <Separator className="my-3" />
                     
                     <div className="space-y-2">
                       <Label htmlFor="checkout-street">Rua <span className="text-destructive">*</span></Label>
@@ -702,6 +648,17 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                           maxLength={2}
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="checkout-cep">CEP (opcional)</Label>
+                      <Input
+                        id="checkout-cep"
+                        placeholder="00000-000"
+                        value={newAddress.zip_code}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, zip_code: e.target.value }))}
+                        className="bg-background"
+                      />
                     </div>
                   </div>
                 )}
@@ -859,16 +816,19 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
         ) : (
           /* Success State */
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <div className="h-20 w-20 rounded-full bg-green-500/10 flex items-center justify-center mb-6">
+            <div className="h-20 w-20 rounded-full bg-green-500/10 flex items-center justify-center mb-6 animate-scale-in">
               <CheckCircle2 className="h-10 w-10 text-green-500" />
             </div>
             <h2 className="text-2xl font-bold mb-2">Pedido Confirmado!</h2>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-muted-foreground mb-6">
               Seu pedido foi recebido e está sendo preparado.
             </p>
-            <p className="text-sm text-muted-foreground">
-              Tempo estimado: {config.establishment.estimatedDeliveryTime || 45} min
-            </p>
+            <div className="bg-secondary/50 rounded-lg p-4 w-full max-w-xs">
+              <p className="text-sm text-muted-foreground mb-1">Tempo estimado de entrega</p>
+              <p className="text-2xl font-bold text-primary">
+                {config.establishment.estimatedDeliveryTime} min
+              </p>
+            </div>
           </div>
         )}
       </SheetContent>

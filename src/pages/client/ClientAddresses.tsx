@@ -5,12 +5,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCepSearch } from '@/hooks/useCepSearch';
+import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
+import { GeocodedAddress } from '@/hooks/useAddressSearch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -38,11 +40,8 @@ import {
   Building2, 
   Briefcase,
   Star,
-  Loader2,
-  Search,
-  CheckCircle2
+  Loader2
 } from 'lucide-react';
-import { formatCepForDisplay, formatCep } from '@/lib/cep';
 
 const addressSchema = z.object({
   label: z.string().min(1, 'Informe um nome para o endereço'),
@@ -52,9 +51,11 @@ const addressSchema = z.object({
   neighborhood: z.string().min(2, 'Informe o bairro'),
   city: z.string().min(2, 'Informe a cidade'),
   state: z.string().min(2, 'Informe o estado'),
-  zip_code: z.string().min(8, 'CEP inválido').max(9, 'CEP inválido'),
+  zip_code: z.string().optional(),
   reference: z.string().optional(),
   is_default: z.boolean().default(false),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 type AddressFormData = z.infer<typeof addressSchema>;
@@ -84,9 +85,6 @@ export default function ClientAddresses() {
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Hook de busca de CEP
-  const { status: cepStatus, search: searchCep, reset: resetCepSearch, lastSearchedCep } = useCepSearch();
-
   const form = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
     defaultValues: {
@@ -102,60 +100,6 @@ export default function ClientAddresses() {
       is_default: false,
     },
   });
-
-  // Handler de busca de CEP - chamado apenas no onBlur ou clique no botão
-  const handleCepSearch = useCallback(async () => {
-    const cleanCep = formatCep(form.getValues('zip_code') || '');
-    
-    // Só buscar se tem 8 dígitos
-    if (cleanCep.length !== 8) {
-      return;
-    }
-    
-    // Só buscar se é um CEP diferente do já buscado com sucesso
-    if (cleanCep === lastSearchedCep && cepStatus === 'success') {
-      return;
-    }
-    
-    const result = await searchCep(cleanCep);
-    
-    if (result.success && result.data) {
-      // Preencher campos com dados da API
-      form.setValue('city', result.data.city, { shouldValidate: true });
-      form.setValue('state', result.data.state, { shouldValidate: true });
-      
-      if (result.data.street) {
-        form.setValue('street', result.data.street, { shouldValidate: true });
-      }
-      if (result.data.neighborhood) {
-        form.setValue('neighborhood', result.data.neighborhood, { shouldValidate: true });
-      }
-      
-      // Feedback ao usuário
-      if (result.data.isPartial) {
-        toast.info('CEP encontrado', {
-          description: `${result.data.city} - ${result.data.state}. Preencha rua e bairro.`,
-        });
-        setTimeout(() => {
-          document.getElementById('street')?.focus();
-        }, 100);
-      } else {
-        toast.success('Endereço encontrado!');
-        setTimeout(() => {
-          document.getElementById('number')?.focus();
-        }, 100);
-      }
-    } else if (result.errorType === 'not_found') {
-      toast.error('CEP não encontrado', {
-        description: 'Verifique o CEP e tente novamente.',
-      });
-    } else {
-      // Erro de rede - permitir preenchimento manual
-      toast.warning('Não foi possível buscar o CEP', {
-        description: 'Você pode preencher o endereço manualmente.',
-      });
-    }
-  }, [form, searchCep, lastSearchedCep, cepStatus]);
 
   useEffect(() => {
     if (user) {
@@ -182,8 +126,29 @@ export default function ClientAddresses() {
     }
   };
 
+  // Handle address selection from Mapbox autocomplete
+  const handleAddressSelect = useCallback((address: GeocodedAddress) => {
+    form.setValue('street', address.street, { shouldValidate: true });
+    form.setValue('neighborhood', address.neighborhood, { shouldValidate: true });
+    form.setValue('city', address.city, { shouldValidate: true });
+    form.setValue('state', address.state, { shouldValidate: true });
+    form.setValue('zip_code', address.postcode || '', { shouldValidate: true });
+    form.setValue('latitude', address.latitude);
+    form.setValue('longitude', address.longitude);
+    
+    if (address.number) {
+      form.setValue('number', address.number, { shouldValidate: true });
+    } else {
+      // Focus on number field if empty
+      setTimeout(() => {
+        document.getElementById('number')?.focus();
+      }, 100);
+    }
+    
+    toast.success('Endereço selecionado!');
+  }, [form]);
+
   const handleOpenDialog = (address?: Address) => {
-    resetCepSearch();
     if (address) {
       setEditingAddress(address);
       form.reset({
@@ -194,9 +159,11 @@ export default function ClientAddresses() {
         neighborhood: address.neighborhood,
         city: address.city,
         state: address.state,
-        zip_code: address.zip_code,
+        zip_code: address.zip_code || '',
         reference: address.reference || '',
         is_default: address.is_default,
+        latitude: address.latitude,
+        longitude: address.longitude,
       });
     } else {
       setEditingAddress(null);
@@ -219,14 +186,7 @@ export default function ClientAddresses() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingAddress(null);
-    resetCepSearch();
     form.reset();
-  };
-
-  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const formatted = formatCepForDisplay(value);
-    form.setValue('zip_code', formatted);
   };
 
   const onSubmit = async (data: AddressFormData) => {
@@ -253,9 +213,11 @@ export default function ClientAddresses() {
             neighborhood: data.neighborhood,
             city: data.city,
             state: data.state,
-            zip_code: data.zip_code,
+            zip_code: data.zip_code || '',
             reference: data.reference || null,
             is_default: data.is_default,
+            latitude: data.latitude,
+            longitude: data.longitude,
           })
           .eq('id', editingAddress.id);
 
@@ -273,9 +235,11 @@ export default function ClientAddresses() {
             neighborhood: data.neighborhood,
             city: data.city,
             state: data.state,
-            zip_code: data.zip_code,
+            zip_code: data.zip_code || '',
             reference: data.reference || null,
             is_default: data.is_default,
+            latitude: data.latitude,
+            longitude: data.longitude,
           });
 
         if (error) throw error;
@@ -484,42 +448,19 @@ export default function ClientAddresses() {
               )}
             </div>
 
-            {/* CEP field with manual search */}
+            {/* Mapbox Autocomplete */}
             <div className="space-y-2">
-              <Label htmlFor="zip_code">CEP</Label>
-              <div className="relative">
-                <Input
-                  id="zip_code"
-                  placeholder="00000-000"
-                  value={form.watch('zip_code')}
-                  onChange={handleCepChange}
-                  onBlur={handleCepSearch}
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                  onClick={handleCepSearch}
-                  disabled={cepStatus === 'loading'}
-                >
-                  {cepStatus === 'loading' ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : cepStatus === 'success' ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Search className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </Button>
-              </div>
+              <Label>Buscar endereço</Label>
+              <AddressAutocomplete
+                placeholder="Digite o endereço completo..."
+                onAddressSelect={handleAddressSelect}
+              />
               <p className="text-xs text-muted-foreground">
-                Digite o CEP e clique na lupa ou saia do campo para buscar
+                Busque e selecione, ou preencha manualmente
               </p>
-              {form.formState.errors.zip_code && (
-                <p className="text-sm text-destructive">{form.formState.errors.zip_code.message}</p>
-              )}
             </div>
+
+            <Separator />
 
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2 space-y-2">
@@ -591,6 +532,15 @@ export default function ClientAddresses() {
                   <p className="text-sm text-destructive">{form.formState.errors.state.message}</p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="zip_code">CEP (opcional)</Label>
+              <Input
+                id="zip_code"
+                placeholder="00000-000"
+                {...form.register('zip_code')}
+              />
             </div>
 
             <div className="space-y-2">
