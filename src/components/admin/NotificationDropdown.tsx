@@ -97,7 +97,7 @@ export function NotificationDropdown() {
               <DropdownMenuItem
                 key={notification.id}
                 className={cn(
-                  'flex items-start gap-3 p-3 cursor-pointer focus:bg-muted/50',
+                  'flex items-start gap-3 p-3 cursor-pointer focus:bg-muted/50 group',
                   !notification.is_read && 'bg-muted/30'
                 )}
                 onClick={() => handleNotificationClick(notification)}
@@ -110,9 +110,19 @@ export function NotificationDropdown() {
                     <p className={cn('text-sm font-medium truncate', !notification.is_read && 'text-foreground')}>
                       {notification.title}
                     </p>
-                    {!notification.is_read && (
-                      <span className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
-                    )}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {!notification.is_read && (
+                        <span className="h-2 w-2 rounded-full bg-destructive" />
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => handleDelete(e, notification.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{notification.message}</p>
                   <p className="text-xs text-muted-foreground/70 mt-1">
@@ -122,14 +132,6 @@ export function NotificationDropdown() {
                     })}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 opacity-50 hover:opacity-100 flex-shrink-0"
-                  onClick={(e) => handleDelete(e, notification.id)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
               </DropdownMenuItem>
             ))
           )}
