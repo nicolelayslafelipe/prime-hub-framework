@@ -29,6 +29,7 @@ export default function AdminDeliveryConfig() {
   const [baseFee, setBaseFee] = useState(5);
   const [pricePerKm, setPricePerKm] = useState(2);
   const [minDistanceIncluded, setMinDistanceIncluded] = useState(2);
+  const [maxDeliveryRadius, setMaxDeliveryRadius] = useState(10);
   const [establishmentLat, setEstablishmentLat] = useState<number | null>(null);
   const [establishmentLng, setEstablishmentLng] = useState<number | null>(null);
   const [establishmentAddress, setEstablishmentAddress] = useState('');
@@ -46,6 +47,7 @@ export default function AdminDeliveryConfig() {
       setBaseFee(config.establishment.baseDeliveryFee || 5);
       setPricePerKm(config.establishment.pricePerKm || 2);
       setMinDistanceIncluded(config.establishment.minDistanceIncluded || 2);
+      setMaxDeliveryRadius(config.establishment.maxDeliveryRadius || 10);
       setEstablishmentLat(config.establishment.establishmentLatitude || null);
       setEstablishmentLng(config.establishment.establishmentLongitude || null);
       setEstablishmentAddress(config.establishment.address || '');
@@ -89,6 +91,7 @@ export default function AdminDeliveryConfig() {
         baseDeliveryFee: baseFee,
         pricePerKm,
         minDistanceIncluded,
+        maxDeliveryRadius,
         establishmentLatitude: establishmentLat || undefined,
         establishmentLongitude: establishmentLng || undefined,
         address: establishmentAddress || config.establishment.address,
@@ -228,16 +231,45 @@ export default function AdminDeliveryConfig() {
                 </div>
               </div>
 
+              {/* Max Delivery Radius */}
+              <div className="p-4 rounded-lg bg-destructive/5 border border-destructive/20">
+                <div className="flex items-center gap-3 mb-3">
+                  <MapPin className="h-5 w-5 text-destructive" />
+                  <div>
+                    <h5 className="text-sm font-medium">Área Máxima de Entrega</h5>
+                    <p className="text-xs text-muted-foreground">
+                      Pedidos fora deste raio serão bloqueados
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Input 
+                    type="number" 
+                    value={maxDeliveryRadius} 
+                    onChange={e => setMaxDeliveryRadius(Number(e.target.value))} 
+                    min={1}
+                    max={50}
+                    step={1}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">km</span>
+                </div>
+              </div>
+
               {/* Example Calculations */}
               <div className="p-4 rounded-lg bg-secondary/50 border border-border">
                 <h5 className="text-sm font-medium mb-3">Exemplos de cálculo:</h5>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   {[2, 5, 10].map(distance => (
-                    <div key={distance} className="p-2 rounded bg-background">
+                    <div key={distance} className={`p-2 rounded ${distance > maxDeliveryRadius ? 'bg-destructive/10 border border-destructive/20' : 'bg-background'}`}>
                       <p className="text-xs text-muted-foreground">{distance} km</p>
-                      <p className="text-lg font-bold text-primary">
-                        R$ {calculateExampleFee(distance).toFixed(2)}
-                      </p>
+                      {distance > maxDeliveryRadius ? (
+                        <p className="text-sm font-medium text-destructive">Fora da área</p>
+                      ) : (
+                        <p className="text-lg font-bold text-primary">
+                          R$ {calculateExampleFee(distance).toFixed(2)}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>

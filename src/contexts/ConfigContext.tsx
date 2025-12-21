@@ -119,6 +119,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             minDistanceIncluded: data.min_distance_included || 2,
             establishmentLatitude: data.establishment_latitude || undefined,
             establishmentLongitude: data.establishment_longitude || undefined,
+            maxDeliveryRadius: data.max_delivery_radius || 10,
           },
         }));
       }
@@ -187,6 +188,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       if (settings.minDistanceIncluded !== undefined) updateData.min_distance_included = settings.minDistanceIncluded;
       if (settings.establishmentLatitude !== undefined) updateData.establishment_latitude = settings.establishmentLatitude;
       if (settings.establishmentLongitude !== undefined) updateData.establishment_longitude = settings.establishmentLongitude;
+      if (settings.maxDeliveryRadius !== undefined) updateData.max_delivery_radius = settings.maxDeliveryRadius;
 
       if (Object.keys(updateData).length > 0) {
         const { error: updateError } = await supabase

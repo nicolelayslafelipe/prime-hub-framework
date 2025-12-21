@@ -120,6 +120,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   // Dynamic delivery fee
   const [calculatedDeliveryFee, setCalculatedDeliveryFee] = useState<number | null>(null);
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
+  const [isOutsideDeliveryArea, setIsOutsideDeliveryArea] = useState(false);
 
   // Reset new address form
   const resetNewAddressForm = useCallback(() => {
@@ -128,6 +129,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     setTouchedFields(new Set());
     setCalculatedDeliveryFee(null);
     setDeliveryDistance(null);
+    setIsOutsideDeliveryArea(false);
   }, []);
 
   const subtotal = getSubtotal();
@@ -196,7 +198,22 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
       if (result) {
         setCalculatedDeliveryFee(result.fee);
         setDeliveryDistance(result.distance);
+        
+        // Check if outside delivery area
+        const maxRadius = config.establishment.maxDeliveryRadius || 10;
+        if (result.distance > maxRadius) {
+          setIsOutsideDeliveryArea(true);
+          toast.error('Endereço fora da área de entrega', {
+            description: `Distância: ${result.distance.toFixed(1)} km. Máximo: ${maxRadius} km`,
+          });
+        } else {
+          setIsOutsideDeliveryArea(false);
+          toast.success('Endereço selecionado!');
+        }
       }
+    } else {
+      setIsOutsideDeliveryArea(false);
+      toast.success('Endereço selecionado!');
     }
     
     // Focus on number field if empty
@@ -205,8 +222,6 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
         document.getElementById('checkout-number')?.focus();
       }, 100);
     }
-    
-    toast.success('Endereço selecionado!');
   }, [config.establishment, calculateFee]);
   
   // Calculate fee when selecting a saved address with coordinates
@@ -229,10 +244,22 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
       if (result) {
         setCalculatedDeliveryFee(result.fee);
         setDeliveryDistance(result.distance);
+        
+        // Check if outside delivery area
+        const maxRadius = config.establishment.maxDeliveryRadius || 10;
+        if (result.distance > maxRadius) {
+          setIsOutsideDeliveryArea(true);
+          toast.error('Endereço fora da área de entrega', {
+            description: `Distância: ${result.distance.toFixed(1)} km. Máximo: ${maxRadius} km`,
+          });
+        } else {
+          setIsOutsideDeliveryArea(false);
+        }
       }
     } else {
       setCalculatedDeliveryFee(null);
       setDeliveryDistance(null);
+      setIsOutsideDeliveryArea(false);
     }
   }, [config.establishment, calculateFee]);
 
@@ -443,6 +470,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     items.length > 0 && 
     customerPhone.trim().length > 0 &&
     isAddressValid() && 
+    !isOutsideDeliveryArea &&
     !(paymentMethod === 'cash' && needsChange && changeForNumber < total);
 
   // Mark field as touched
@@ -849,24 +877,49 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                         <span className="text-xs text-muted-foreground">({deliveryDistance.toFixed(1)} km)</span>
                       )}
                     </div>
-                    <span>R$ {deliveryFee.toFixed(2)}</span>
+                    {isOutsideDeliveryArea ? (
+                      <span className="text-destructive font-medium">Fora da área</span>
+                    ) : (
+                      <span>R$ {deliveryFee.toFixed(2)}</span>
+                    )}
                   </div>
+                  
+                  {/* Outside delivery area warning */}
+                  {isOutsideDeliveryArea && (
+                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 mt-2">
+                      <div className="flex items-center gap-2 text-destructive font-medium text-sm">
+                        <AlertCircle className="h-4 w-4" />
+                        Endereço fora da área de entrega
+                      </div>
+                      <p className="text-xs text-destructive/80 mt-1">
+                        A distância do seu endereço ({deliveryDistance?.toFixed(1)} km) excede o raio máximo de entrega ({config.establishment.maxDeliveryRadius} km).
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between font-semibold text-lg pt-2">
                     <span>Total</span>
-                    <span className="text-primary">R$ {total.toFixed(2)}</span>
+                    <span className={isOutsideDeliveryArea ? "text-muted-foreground" : "text-primary"}>
+                      {isOutsideDeliveryArea ? "—" : `R$ ${total.toFixed(2)}`}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-border bg-card">
+            <div className="p-4 border-t border-border bg-card space-y-2">
+              {isOutsideDeliveryArea && (
+                <p className="text-xs text-center text-destructive">
+                  Não é possível finalizar: endereço fora da área de entrega
+                </p>
+              )}
               <Button 
                 className="w-full h-12 text-base font-semibold" 
                 onClick={handlePlaceOrder}
                 disabled={!canPlaceOrder}
               >
-                Confirmar Pedido
+                {isOutsideDeliveryArea ? 'Fora da Área de Entrega' : 'Confirmar Pedido'}
               </Button>
             </div>
           </>

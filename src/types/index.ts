@@ -90,6 +90,7 @@ export interface EstablishmentSettings {
   minDistanceIncluded?: number;
   establishmentLatitude?: number;
   establishmentLongitude?: number;
+  maxDeliveryRadius?: number;
 }
 
 export interface ThemeSettings {
