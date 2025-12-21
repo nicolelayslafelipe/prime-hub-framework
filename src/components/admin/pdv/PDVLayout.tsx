@@ -20,6 +20,7 @@ export function PDVLayout() {
     openRegister,
     closeRegister,
     getCashSummary,
+    addTransaction,
   } = useCashRegister();
 
   if (isLoading) {
@@ -86,6 +87,8 @@ export function PDVLayout() {
         <PDVCheckout
           open={showCheckout}
           onClose={() => setShowCheckout(false)}
+          currentRegister={currentRegister}
+          addTransaction={addTransaction}
         />
 
         {/* Open Register Modal */}

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { usePDV } from '@/contexts/PDVContext';
-import { useCashRegister } from '@/hooks/useCashRegister';
 import { useOrders } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -13,19 +12,33 @@ import { toast } from 'sonner';
 import { Loader2, CreditCard, Banknote, QrCode, Store, Package, UtensilsCrossed } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+interface CashRegister {
+  id: string;
+  user_id: string;
+  status: 'open' | 'closed';
+  opening_amount: number;
+  closing_amount: number | null;
+  expected_amount: number | null;
+  difference: number | null;
+  notes: string | null;
+  opened_at: string;
+  closed_at: string | null;
+}
+
 interface PDVCheckoutProps {
   open: boolean;
   onClose: () => void;
+  currentRegister: CashRegister | null;
+  addTransaction: (orderId: string, paymentMethod: string, amount: number) => Promise<boolean>;
 }
 
 type OrderType = 'pdv_counter' | 'pdv_pickup' | 'pdv_table';
 type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'pix';
 
-export function PDVCheckout({ open, onClose }: PDVCheckoutProps) {
+export function PDVCheckout({ open, onClose, currentRegister, addTransaction }: PDVCheckoutProps) {
   const { items, getTotal, clearCart } = usePDV();
-  const { addTransaction, currentRegister } = useCashRegister();
   const { addOrder } = useOrders();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>('pdv_counter');
