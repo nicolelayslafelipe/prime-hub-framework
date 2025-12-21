@@ -451,17 +451,22 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                       ))}
                       
                       {/* New address option */}
-                      <label
+                      <div
+                        onClick={() => {
+                          setShowNewAddressForm(true);
+                          setSelectedAddressId(null);
+                          setAddressErrors([]);
+                        }}
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                           showNewAddressForm
                             ? 'border-primary bg-primary/5' 
                             : 'border-border bg-secondary/30 hover:bg-secondary/50'
                         }`}
                       >
-                        <RadioGroupItem value="new" />
+                        <RadioGroupItem value="new" checked={showNewAddressForm} />
                         <Plus className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-medium">Entregar em outro endereço</span>
-                      </label>
+                      </div>
                     </RadioGroup>
                   </div>
                 ) : null}

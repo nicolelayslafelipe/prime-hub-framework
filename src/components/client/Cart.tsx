@@ -45,9 +45,19 @@ export function Cart({ onCheckout }: CartProps) {
                   key={item.product.id}
                   className="card-premium p-4 flex gap-3 animate-fade-in"
                 >
-                  <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center text-3xl flex-shrink-0">
-                    {item.product.image}
-                  </div>
+                  {item.product.image && (item.product.image.startsWith('http') || item.product.image.startsWith('/')) ? (
+                    <div className="h-16 w-16 rounded-lg overflow-hidden flex-shrink-0">
+                      <img 
+                        src={item.product.image} 
+                        alt={item.product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center text-3xl flex-shrink-0">
+                      {item.product.image || '🍔'}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-sm truncate">{item.product.name}</h4>
                     <p className="text-sm font-bold text-primary font-mono mt-1">
