@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/shared/Logo';
-import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher';
+
 import { toast } from 'sonner';
 import { Loader2, Lock, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -143,7 +143,6 @@ export default function ResetPassword() {
               </Button>
               <Logo size="sm" />
             </div>
-            <ThemeSwitcher />
           </div>
         </header>
 
@@ -201,7 +200,7 @@ export default function ResetPassword() {
             </Button>
             <Logo size="sm" />
           </div>
-          <ThemeSwitcher />
+          
         </div>
       </motion.header>
 
