@@ -1094,3 +1094,34 @@
     @apply bg-border rounded-full;
   }
 }
+
+
+/* --- AI FULL: GHOST MODE PROTOCOL [V2.0] --- */
+/* Ocultação total de branding e ferramentas de edição */
+
+/* 1. Remove Links e Badges da Marca */
+a[href*="lovable.dev"],         
+.lovable-badge,                 
+#lovable-badge,                 
+[data-lovable-author],
+
+/* 2. Remove Iframes e Popups de Preview */
+iframe[src*="lovable.dev"],     
+
+/* 3. Remove o Botão Flutuante de Edição */
+div[style*="Edit with Lovable"],
+div[style*="position: fixed"][style*="bottom:"] a[href*="lovable"],
+
+/* 4. Segurança Extra (Variações de DOM) */
+#__lovable-badge,
+.lovable-watermark {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  z-index: -9999 !important;
+  width: 0 !important;
+  height: 0 !important;
+  clip-path: inset(100%) !important; /* Garante que screen readers ignorem */
+}
