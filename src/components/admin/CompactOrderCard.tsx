@@ -4,10 +4,12 @@ import { Clock, MapPin, ChevronRight, Coins } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useState, useEffect } from 'react';
 
 interface CompactOrderCardProps {
   order: Order;
   onUpdateStatus?: (orderId: string) => void;
+  isNew?: boolean;
 }
 
 const statusBarColors: Record<OrderStatus, string> = {
@@ -28,7 +30,20 @@ const actionLabels: Partial<Record<OrderStatus, string>> = {
   out_for_delivery: 'Finalizar',
 };
 
-export function CompactOrderCard({ order, onUpdateStatus }: CompactOrderCardProps) {
+export function CompactOrderCard({ order, onUpdateStatus, isNew = false }: CompactOrderCardProps) {
+  const [showHighlight, setShowHighlight] = useState(isNew);
+
+  // Remove highlight after animation completes
+  useEffect(() => {
+    if (isNew) {
+      setShowHighlight(true);
+      const timer = setTimeout(() => {
+        setShowHighlight(false);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isNew]);
+
   const timeAgo = formatDistanceToNow(order.createdAt, {
     addSuffix: false,
     locale: ptBR,
@@ -46,9 +61,10 @@ export function CompactOrderCard({ order, onUpdateStatus }: CompactOrderCardProp
   return (
     <div
       className={cn(
-        'relative bg-card border border-border/50 rounded-xl overflow-hidden transition-all duration-200',
+        'relative bg-card border border-border/50 rounded-xl overflow-hidden transition-all duration-300',
         'hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5',
-        isUrgent && 'animate-pulse-subtle'
+        isUrgent && 'animate-pulse-subtle',
+        showHighlight && 'animate-card-enter ring-2 ring-primary/50 shadow-lg shadow-primary/20'
       )}
     >
       {/* Status bar at top */}
