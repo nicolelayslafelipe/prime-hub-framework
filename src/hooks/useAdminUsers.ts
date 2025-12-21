@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuditLog } from './useAuditLog';
 
 type AppRole = 'client' | 'admin' | 'kitchen' | 'motoboy';
 
@@ -33,6 +34,7 @@ export function useAdminUsers() {
   const [users, setUsers] = useState<InternalUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { logUserAction } = useAuditLog();
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -116,6 +118,7 @@ export function useAdminUsers() {
         throw new Error(response.data.error || 'Erro ao criar usuário');
       }
 
+      // Audit log is handled in edge function
       toast.success('Usuário criado com sucesso!');
       await fetchUsers();
       return { success: true };
@@ -129,10 +132,22 @@ export function useAdminUsers() {
 
   const updateUser = async (userId: string, data: UpdateUserData): Promise<{ success: boolean; error?: string }> => {
     try {
+      const user = users.find(u => u.id === userId);
       const updateData: Record<string, unknown> = {};
-      if (data.name !== undefined) updateData.name = data.name;
-      if (data.phone !== undefined) updateData.phone = data.phone;
-      if (data.isActive !== undefined) updateData.is_active = data.isActive;
+      const changes: Record<string, unknown> = {};
+
+      if (data.name !== undefined) {
+        updateData.name = data.name;
+        changes.name = { from: user?.name, to: data.name };
+      }
+      if (data.phone !== undefined) {
+        updateData.phone = data.phone;
+        changes.phone = { from: user?.phone, to: data.phone };
+      }
+      if (data.isActive !== undefined) {
+        updateData.is_active = data.isActive;
+        changes.is_active = { from: user?.isActive, to: data.isActive };
+      }
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -140,6 +155,12 @@ export function useAdminUsers() {
         .eq('id', userId);
 
       if (updateError) throw updateError;
+
+      // Log the action
+      await logUserAction('update_user', userId, user?.name || 'Unknown', {
+        changes,
+        role: user?.role,
+      });
 
       toast.success('Usuário atualizado com sucesso!');
       await fetchUsers();
@@ -153,7 +174,20 @@ export function useAdminUsers() {
   };
 
   const toggleUserStatus = async (userId: string, isActive: boolean): Promise<{ success: boolean; error?: string }> => {
-    return updateUser(userId, { isActive });
+    const user = users.find(u => u.id === userId);
+    
+    const result = await updateUser(userId, { isActive });
+    
+    if (result.success) {
+      // Log specific toggle action
+      await logUserAction('toggle_user_status', userId, user?.name || 'Unknown', {
+        new_status: isActive,
+        previous_status: !isActive,
+        role: user?.role,
+      });
+    }
+    
+    return result;
   };
 
   const deleteUser = async (userId: string): Promise<{ success: boolean; error?: string }> => {
@@ -175,6 +209,7 @@ export function useAdminUsers() {
         throw new Error(response.data.error || 'Erro ao excluir usuário');
       }
 
+      // Audit log is handled in edge function
       toast.success('Usuário excluído com sucesso!');
       await fetchUsers();
       return { success: true };
