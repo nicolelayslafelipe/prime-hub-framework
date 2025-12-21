@@ -22,6 +22,8 @@ export type Database = {
           id: string
           is_default: boolean
           label: string
+          latitude: number | null
+          longitude: number | null
           neighborhood: string
           number: string
           reference: string | null
@@ -29,7 +31,7 @@ export type Database = {
           street: string
           updated_at: string
           user_id: string
-          zip_code: string
+          zip_code: string | null
         }
         Insert: {
           city: string
@@ -38,6 +40,8 @@ export type Database = {
           id?: string
           is_default?: boolean
           label?: string
+          latitude?: number | null
+          longitude?: number | null
           neighborhood: string
           number: string
           reference?: string | null
@@ -45,7 +49,7 @@ export type Database = {
           street: string
           updated_at?: string
           user_id: string
-          zip_code: string
+          zip_code?: string | null
         }
         Update: {
           city?: string
@@ -54,6 +58,8 @@ export type Database = {
           id?: string
           is_default?: boolean
           label?: string
+          latitude?: number | null
+          longitude?: number | null
           neighborhood?: string
           number?: string
           reference?: string | null
@@ -61,7 +67,7 @@ export type Database = {
           street?: string
           updated_at?: string
           user_id?: string
-          zip_code?: string
+          zip_code?: string | null
         }
         Relationships: []
       }
@@ -458,6 +464,8 @@ export type Database = {
           created_at: string | null
           customer_address: string
           customer_id: string
+          customer_latitude: number | null
+          customer_longitude: number | null
           customer_name: string
           customer_phone: string
           delivery_fee: number | null
@@ -478,6 +486,8 @@ export type Database = {
           created_at?: string | null
           customer_address: string
           customer_id: string
+          customer_latitude?: number | null
+          customer_longitude?: number | null
           customer_name: string
           customer_phone: string
           delivery_fee?: number | null
@@ -498,6 +508,8 @@ export type Database = {
           created_at?: string | null
           customer_address?: string
           customer_id?: string
+          customer_latitude?: number | null
+          customer_longitude?: number | null
           customer_name?: string
           customer_phone?: string
           delivery_fee?: number | null
