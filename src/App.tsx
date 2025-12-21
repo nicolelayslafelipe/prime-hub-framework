@@ -50,6 +50,7 @@ import AdminProfile from "./pages/admin/AdminProfile";
 import AdminSoundSettings from "./pages/admin/SoundSettings";
 import AdminThemes from "./pages/admin/Themes";
 import AdminCoupons from "./pages/admin/Coupons";
+import AdminCouponReports from "./pages/admin/CouponReports";
 // Panel Pages
 import KitchenPanel from "./pages/kitchen/KitchenPanel";
 import MotoboyPanel from "./pages/motoboy/MotoboyPanel";
@@ -110,6 +111,7 @@ const App = () => (
                           <Route path="/admin/sound-settings" element={<SidebarProvider><AdminSoundSettings /></SidebarProvider>} />
                           <Route path="/admin/themes" element={<SidebarProvider><AdminThemes /></SidebarProvider>} />
                           <Route path="/admin/coupons" element={<SidebarProvider><AdminCoupons /></SidebarProvider>} />
+                          <Route path="/admin/coupon-reports" element={<SidebarProvider><AdminCouponReports /></SidebarProvider>} />
                         </Route>
 
                         {/* Protected Kitchen Route */}

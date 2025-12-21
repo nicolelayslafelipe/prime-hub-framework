@@ -572,6 +572,8 @@ export type Database = {
         Row: {
           change_amount: number | null
           change_for: number | null
+          coupon_code: string | null
+          coupon_discount: number | null
           created_at: string | null
           customer_address: string
           customer_id: string
@@ -599,6 +601,8 @@ export type Database = {
         Insert: {
           change_amount?: number | null
           change_for?: number | null
+          coupon_code?: string | null
+          coupon_discount?: number | null
           created_at?: string | null
           customer_address: string
           customer_id: string
@@ -626,6 +630,8 @@ export type Database = {
         Update: {
           change_amount?: number | null
           change_for?: number | null
+          coupon_code?: string | null
+          coupon_discount?: number | null
           created_at?: string | null
           customer_address?: string
           customer_id?: string

@@ -555,6 +555,8 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
           needs_change: paymentMethod === 'cash' && needsChange,
           change_for: paymentMethod === 'cash' && needsChange ? changeForNumber : undefined,
           change_amount: paymentMethod === 'cash' && needsChange ? changeAmount : undefined,
+          coupon_code: appliedCoupon?.code || null,
+          coupon_discount: couponDiscount > 0 ? couponDiscount : null,
         })
         .select()
         .single();

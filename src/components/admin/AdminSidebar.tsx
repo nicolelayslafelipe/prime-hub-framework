@@ -35,6 +35,7 @@ import {
   Volume2,
   Palette,
   Ticket,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -91,6 +92,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { icon: Megaphone, label: 'Banners', path: '/admin/marketing' },
       { icon: Ticket, label: 'Cupons', path: '/admin/coupons' },
+      { icon: BarChart3, label: 'Relatório Cupons', path: '/admin/coupon-reports' },
       { icon: Gift, label: 'Fidelidade', path: '/admin/loyalty' },
       { icon: Star, label: 'Avaliações', path: '/admin/reviews' },
     ],
