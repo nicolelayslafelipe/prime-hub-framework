@@ -23,8 +23,10 @@ interface CreatePaymentParams {
   description?: string;
 }
 
+export type PaymentState = 'idle' | 'creating' | 'success' | 'error';
+
 export function useMercadoPagoPayment() {
-  const [isCreating, setIsCreating] = useState(false);
+  const [paymentState, setPaymentState] = useState<PaymentState>('idle');
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +37,7 @@ export function useMercadoPagoPayment() {
     customerEmail,
     description,
   }: CreatePaymentParams): Promise<PaymentResult | null> => {
-    setIsCreating(true);
+    setPaymentState('creating');
     setError(null);
 
     try {
@@ -58,27 +60,36 @@ export function useMercadoPagoPayment() {
       }
 
       setPaymentResult(data);
+      setPaymentState('success');
       return data;
 
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao criar pagamento';
       setError(message);
+      setPaymentState('error');
       toast.error('Erro ao processar pagamento', { description: message });
       return null;
-    } finally {
-      setIsCreating(false);
     }
   }, []);
 
   const resetPayment = useCallback(() => {
     setPaymentResult(null);
     setError(null);
+    setPaymentState('idle');
+  }, []);
+
+  const retryPayment = useCallback(() => {
+    setError(null);
+    setPaymentState('idle');
   }, []);
 
   return {
     createPayment,
     resetPayment,
-    isCreating,
+    retryPayment,
+    paymentState,
+    isCreating: paymentState === 'creating',
+    isError: paymentState === 'error',
     paymentResult,
     error,
   };

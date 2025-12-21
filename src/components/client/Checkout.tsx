@@ -94,7 +94,16 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   const { preferences, updatePreference } = useClientPreferences();
   const { calculateFee, isCalculating: isCalculatingFee, lastResult: feeResult } = useDeliveryFeeCalculation();
   const { calculateETA, isCalculating: isCalculatingETA, lastResult: etaResult } = useETACalculation();
-  const { createPayment, isCreating: isCreatingPayment, paymentResult, resetPayment } = useMercadoPagoPayment();
+  const { 
+    createPayment, 
+    paymentState, 
+    isCreating: isCreatingPayment, 
+    isError: isPaymentError,
+    paymentResult, 
+    error: paymentErrorMessage,
+    resetPayment,
+    retryPayment 
+  } = useMercadoPagoPayment();
   
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [paymentMethod, setPaymentMethod] = useState('pix_online');
@@ -140,6 +149,7 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [currentOrderNumber, setCurrentOrderNumber] = useState<number | null>(null);
   const [currentPaymentType, setCurrentPaymentType] = useState<'pix' | 'card'>('pix');
+  const [currentPaymentAmount, setCurrentPaymentAmount] = useState<number>(0);
 
   // Reset new address form
   const resetNewAddressForm = useCallback(() => {
@@ -501,30 +511,39 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
         console.error('Error inserting order items:', itemsError);
       }
 
-      // Handle online payment
+      // Handle online payment - ABERTURA IMEDIATA DO MODAL
       if (isOnlinePayment) {
         const paymentType = paymentMethod === 'pix_online' ? 'pix' : 'card';
+        
+        // Configurar dados do pagamento ANTES de abrir o modal
         setCurrentOrderId(orderData.id);
         setCurrentOrderNumber(orderData.order_number);
         setCurrentPaymentType(paymentType);
+        setCurrentPaymentAmount(total);
+        
+        // ABRIR MODAL IMEDIATAMENTE com loading
+        setShowPaymentModal(true);
 
-        const result = await createPayment({
-          orderId: orderData.id,
-          paymentType,
-          amount: total,
-          customerEmail: user.email,
-          description: `Pedido #${orderData.order_number}`,
-        });
+        // Executar operações em PARALELO (inserir itens e criar pagamento)
+        const [_, paymentResult] = await Promise.all([
+          // Salvar endereço em background (já iniciado acima mas garantir conclusão)
+          showNewAddressForm ? saveNewAddressToDatabase() : Promise.resolve(),
+          // Criar pagamento PIX/Card - PRIORIDADE
+          createPayment({
+            orderId: orderData.id,
+            paymentType,
+            amount: total,
+            customerEmail: user.email,
+            description: `Pedido #${orderData.order_number}`,
+          }),
+        ]);
 
-        if (result) {
-          setShowPaymentModal(true);
-        } else {
-          // Payment creation failed, update order status
+        // Se falhou, atualizar status do pedido (modal mostrará o erro)
+        if (!paymentResult) {
           await supabase
             .from('orders')
             .update({ status: 'cancelled', payment_status: 'cancelled' })
             .eq('id', orderData.id);
-          throw new Error('Erro ao criar pagamento');
         }
       } else {
         // Non-online payment - go directly to success
@@ -581,6 +600,26 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     setStep('success');
     clearCart();
     toast.success('Pagamento aprovado!');
+  };
+
+  // Retry de pagamento quando falha
+  const handleRetryPayment = async () => {
+    if (!currentOrderId || !user) return;
+    
+    retryPayment();
+    
+    const result = await createPayment({
+      orderId: currentOrderId,
+      paymentType: currentPaymentType,
+      amount: currentPaymentAmount,
+      customerEmail: user.email,
+      description: `Pedido #${currentOrderNumber}`,
+    });
+
+    if (!result) {
+      // Se falhou novamente, já será tratado pelo estado do hook
+      console.error('Retry payment failed');
+    }
   };
 
   const buildOrderNotes = () => {
@@ -1122,12 +1161,16 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
         onClose={() => setShowPaymentModal(false)}
         orderId={currentOrderId}
         orderNumber={currentOrderNumber || undefined}
-        amount={total}
+        amount={currentPaymentAmount || total}
         paymentType={currentPaymentType}
         qrCode={paymentResult?.qr_code}
         qrCodeBase64={paymentResult?.qr_code_base64}
         checkoutUrl={paymentResult?.checkout_url}
         onPaymentApproved={handlePaymentApproved}
+        isLoading={paymentState === 'creating'}
+        hasError={isPaymentError}
+        errorMessage={paymentErrorMessage}
+        onRetry={handleRetryPayment}
       />
     </Sheet>
   );
