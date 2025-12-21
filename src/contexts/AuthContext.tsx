@@ -31,6 +31,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (data: ProfileUpdate) => Promise<{ error: Error | null }>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<{ error: Error | null }>;
+  updateEmail: (newEmail: string) => Promise<{ error: Error | null }>;
   uploadAvatar: (file: File) => Promise<{ url: string | null; error: Error | null }>;
   refreshProfile: () => Promise<void>;
 }
@@ -208,6 +209,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? new Error(error.message) : null };
   };
 
+  const updateEmail = async (newEmail: string) => {
+    if (!user) return { error: new Error('Usuário não autenticado') };
+    
+    const { error } = await supabase.auth.updateUser({
+      email: newEmail,
+    });
+    
+    return { error: error ? new Error(error.message) : null };
+  };
+
   const uploadAvatar = async (file: File) => {
     if (!user) return { url: null, error: new Error('Usuário não autenticado') };
     
@@ -257,6 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         updateProfile,
         updatePassword,
+        updateEmail,
         uploadAvatar,
         refreshProfile,
       }}
