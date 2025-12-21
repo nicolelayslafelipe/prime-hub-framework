@@ -498,10 +498,15 @@ export type Database = {
           delivery_fee: number | null
           id: string
           motoboy_id: string | null
+          mp_checkout_url: string | null
+          mp_payment_id: string | null
+          mp_preference_id: string | null
+          mp_qr_code: string | null
           needs_change: boolean | null
           notes: string | null
           order_number: number
           payment_method: string
+          payment_status: string | null
           status: string
           subtotal: number
           total: number
@@ -520,10 +525,15 @@ export type Database = {
           delivery_fee?: number | null
           id?: string
           motoboy_id?: string | null
+          mp_checkout_url?: string | null
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          mp_qr_code?: string | null
           needs_change?: boolean | null
           notes?: string | null
           order_number?: number
           payment_method: string
+          payment_status?: string | null
           status?: string
           subtotal: number
           total: number
@@ -542,10 +552,15 @@ export type Database = {
           delivery_fee?: number | null
           id?: string
           motoboy_id?: string | null
+          mp_checkout_url?: string | null
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          mp_qr_code?: string | null
           needs_change?: boolean | null
           notes?: string | null
           order_number?: number
           payment_method?: string
+          payment_status?: string | null
           status?: string
           subtotal?: number
           total?: number
