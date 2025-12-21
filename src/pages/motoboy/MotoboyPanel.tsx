@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useOrders } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSound } from '@/contexts/SoundContext';
+import { useMotoboyNotifications } from '@/hooks/useMotoboyNotifications';
 import { Logo } from '@/components/shared/Logo';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
@@ -10,10 +11,12 @@ import { DeliveryMap } from '@/components/shared/DeliveryMap';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, Bike, MapPin, Phone, CheckCircle2, Coins, LogOut, User, Navigation, ExternalLink } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Clock, Bike, MapPin, Phone, CheckCircle2, Coins, LogOut, User, Navigation, ExternalLink, Bell, BellOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { Order } from '@/types';
 
 function OrderCardSkeleton() {
   return (
@@ -46,6 +49,21 @@ export default function MotoboyPanel() {
     isPlayingMotoboy,
     soundPlaybackFailed 
   } = useSound();
+  
+  const {
+    isSubscribed: notificationsEnabled,
+    isProcessing: notificationsProcessing,
+    permissionState,
+    isSupported: notificationsSupported,
+    toggleSubscription,
+    showNotification,
+  } = useMotoboyNotifications();
+
+  // Track previously available orders to detect new ones
+  const previousOrdersRef = useRef<string[]>([]);
+
+  const availableOrders = orders.filter((o) => o.status === 'ready');
+  const myDeliveries = orders.filter((o) => o.status === 'out_for_delivery');
 
   // Initialize audio on first user interaction
   useEffect(() => {
@@ -66,8 +84,29 @@ export default function MotoboyPanel() {
     };
   }, [isAudioInitialized, initializeAudio]);
 
-  const availableOrders = orders.filter((o) => o.status === 'ready');
-  const myDeliveries = orders.filter((o) => o.status === 'out_for_delivery');
+  // Check for new available orders and send push notification
+  useEffect(() => {
+    if (isLoading) return;
+
+    const currentOrderIds = availableOrders.map(o => o.id);
+    const previousIds = previousOrdersRef.current;
+    
+    // Find new orders
+    const newOrders = availableOrders.filter(o => !previousIds.includes(o.id));
+    
+    if (newOrders.length > 0 && notificationsEnabled && previousIds.length > 0) {
+      // Send push notification for each new order
+      newOrders.forEach((order: Order) => {
+        showNotification(`Pedido #${order.orderNumber} Disponível! 🛵`, {
+          body: `${order.customerAddress}\nTotal: R$ ${order.total.toFixed(2)}`,
+          tag: `order-${order.id}`,
+          data: { url: '/motoboy', orderId: order.id },
+        });
+      });
+    }
+
+    previousOrdersRef.current = currentOrderIds;
+  }, [availableOrders, isLoading, notificationsEnabled, showNotification]);
 
   const handleAcceptOrder = async (orderId: string) => {
     await updateOrderStatus(orderId, 'out_for_delivery');
@@ -106,16 +145,45 @@ export default function MotoboyPanel() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="glass border-b sticky top-0 z-30">
-        <div className="flex items-center justify-between px-6 h-16">
+        <div className="flex items-center justify-between px-4 lg:px-6 h-16">
           <div className="flex items-center gap-4">
             <Logo size="sm" />
-            <div className="h-6 w-px bg-border" />
+            <div className="h-6 w-px bg-border hidden sm:block" />
             <div className="flex items-center gap-2">
               <Bike className="h-5 w-5 text-panel-motoboy" />
-              <span className="font-semibold">Painel do Motoboy</span>
+              <span className="font-semibold hidden sm:inline">Painel do Motoboy</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 lg:gap-4">
+            {/* Push Notifications Toggle */}
+            {notificationsSupported && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={notificationsEnabled ? "default" : "outline"}
+                  size="sm"
+                  onClick={toggleSubscription}
+                  disabled={notificationsProcessing || permissionState === 'denied'}
+                  className="gap-1.5"
+                  title={
+                    permissionState === 'denied' 
+                      ? 'Notificações bloqueadas no navegador' 
+                      : notificationsEnabled 
+                        ? 'Desativar notificações' 
+                        : 'Ativar notificações'
+                  }
+                >
+                  {notificationsEnabled ? (
+                    <Bell className="h-4 w-4" />
+                  ) : (
+                    <BellOff className="h-4 w-4" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {notificationsProcessing ? 'Aguarde...' : notificationsEnabled ? 'Notif. ON' : 'Notif. OFF'}
+                  </span>
+                </Button>
+              </div>
+            )}
+            
             {/* Sound Indicator */}
             <SoundIndicator
               isPlaying={isPlayingMotoboy}
@@ -124,21 +192,21 @@ export default function MotoboyPanel() {
               className={soundPlaybackFailed ? 'text-destructive' : ''}
             />
             <ConnectionStatus status={connectionStatus} />
-            <div className="h-6 w-px bg-border" />
-            <div className="flex items-center gap-2 text-sm">
+            <div className="h-6 w-px bg-border hidden sm:block" />
+            <div className="flex items-center gap-2 text-sm hidden sm:flex">
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">{profile?.name || 'Motoboy'}</span>
             </div>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
               <LogOut className="h-4 w-4" />
-              Sair
+              <span className="hidden sm:inline">Sair</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <main className="p-6">
+      <main className="p-4 lg:p-6">
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Available Orders */}
           <div>
@@ -193,6 +261,18 @@ export default function MotoboyPanel() {
                 <Card className="p-8 glass text-center">
                   <Bike className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p className="text-muted-foreground">Nenhum pedido disponível</p>
+                  {notificationsSupported && !notificationsEnabled && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-4"
+                      onClick={toggleSubscription}
+                      disabled={notificationsProcessing}
+                    >
+                      <Bell className="h-4 w-4 mr-2" />
+                      Ativar notificações
+                    </Button>
+                  )}
                 </Card>
               )}
             </div>
