@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export type PaymentStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'in_process';
@@ -29,20 +29,15 @@ export function usePaymentStatus(orderId: string | null) {
       if (error) throw error;
       
       setPaymentData(data as PaymentData);
-    } catch (error) {
-      console.error('Error fetching payment status:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setIsLoading(false);
     }
   }, [orderId]);
 
-  // Initial fetch
-  useEffect(() => {
-    fetchPaymentStatus();
-  }, [fetchPaymentStatus]);
-
   // Real-time subscription for payment status updates
-  useEffect(() => {
+  const subscribeToPaymentUpdates = useCallback(() => {
     if (!orderId) return;
 
     const channel = supabase
@@ -56,7 +51,6 @@ export function usePaymentStatus(orderId: string | null) {
           filter: `id=eq.${orderId}`,
         },
         (payload) => {
-          console.log('Payment status updated:', payload.new);
           const newData = payload.new as Record<string, unknown>;
           setPaymentData({
             payment_status: (newData.payment_status as PaymentStatus) || null,
@@ -78,6 +72,7 @@ export function usePaymentStatus(orderId: string | null) {
     paymentData,
     isLoading,
     refetch: fetchPaymentStatus,
+    subscribe: subscribeToPaymentUpdates,
     isApproved: paymentData?.payment_status === 'approved',
     isPending: paymentData?.payment_status === 'pending',
     isRejected: paymentData?.payment_status === 'rejected',

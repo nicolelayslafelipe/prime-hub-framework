@@ -15,25 +15,45 @@ interface PaymentRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Validate authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
     
     if (!accessToken) {
-      console.error('MERCADO_PAGO_ACCESS_TOKEN not configured');
       return new Response(
-        JSON.stringify({ error: 'Mercado Pago não configurado' }),
+        JSON.stringify({ error: 'Pagamento não configurado' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const { order_id, payment_type, customer_email, description, amount }: PaymentRequest = await req.json();
-
-    console.log('Creating payment:', { order_id, payment_type, amount });
 
     if (!order_id || !payment_type || !amount) {
       return new Response(
@@ -42,86 +62,71 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    // Use service role for database operations
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verificar se estabelecimento está aberto
-    const { data: establishmentSettings, error: settingsError } = await supabase
-      .from('establishment_settings')
-      .select('is_open')
-      .limit(1)
-      .single();
-
-    if (settingsError) {
-      console.error('Error fetching establishment settings:', settingsError);
-    }
-
-    if (establishmentSettings && !establishmentSettings.is_open) {
-      console.log('Establishment is closed, rejecting payment');
-      return new Response(
-        JSON.stringify({ error: 'Estabelecimento fechado no momento' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Verificar se método de pagamento está ativo
-    const paymentTypeDB = payment_type === 'pix' ? 'pix' : 'credit';
-    const { data: paymentMethodActive, error: methodError } = await supabase
-      .from('payment_methods')
-      .select('is_active')
-      .eq('type', paymentTypeDB)
-      .limit(1)
-      .single();
-
-    if (methodError) {
-      console.error('Error fetching payment method:', methodError);
-    }
-
-    if (paymentMethodActive && !paymentMethodActive.is_active) {
-      console.log(`Payment method ${payment_type} is disabled, rejecting payment`);
-      return new Response(
-        JSON.stringify({ error: 'Forma de pagamento desativada' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get order details
-    const { data: order, error: orderError } = await supabase
+    // Verify order belongs to user
+    const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .select('*')
       .eq('id', order_id)
+      .eq('customer_id', user.id)
       .single();
 
     if (orderError || !order) {
-      console.error('Order not found:', orderError);
       return new Response(
         JSON.stringify({ error: 'Pedido não encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Check if establishment is open
+    const { data: establishmentSettings } = await supabaseAdmin
+      .from('establishment_settings')
+      .select('is_open')
+      .limit(1)
+      .single();
+
+    if (establishmentSettings && !establishmentSettings.is_open) {
+      return new Response(
+        JSON.stringify({ error: 'Estabelecimento fechado' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if payment method is active
+    const paymentTypeDB = payment_type === 'pix' ? 'pix' : 'credit';
+    const { data: paymentMethodActive } = await supabaseAdmin
+      .from('payment_methods')
+      .select('is_active')
+      .eq('type', paymentTypeDB)
+      .limit(1)
+      .single();
+
+    if (paymentMethodActive && !paymentMethodActive.is_active) {
+      return new Response(
+        JSON.stringify({ error: 'Forma de pagamento desativada' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     let paymentResult;
 
     if (payment_type === 'pix') {
-      // Calculate expiration: 5 minutes from now
       const expirationDate = new Date();
       expirationDate.setMinutes(expirationDate.getMinutes() + 5);
 
-      // Create PIX payment
       const pixPayload = {
         transaction_amount: amount,
         description: description || `Pedido #${order.order_number}`,
         payment_method_id: 'pix',
         date_of_expiration: expirationDate.toISOString(),
         payer: {
-          email: customer_email || 'cliente@delivery.com',
+          email: customer_email || user.email || 'cliente@delivery.com',
         },
         external_reference: order_id,
       };
-
-      console.log('Creating PIX payment:', pixPayload);
 
       const pixResponse = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
@@ -136,21 +141,17 @@ serve(async (req) => {
       const pixData = await pixResponse.json();
 
       if (!pixResponse.ok) {
-        console.error('PIX creation failed:', pixData);
+        console.error('PIX creation failed');
         return new Response(
-          JSON.stringify({ error: 'Erro ao criar pagamento PIX', details: pixData }),
+          JSON.stringify({ error: 'Erro ao criar pagamento' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      console.log('PIX payment created:', pixData.id);
-
-      // Extract QR Code data
       const qrCodeData = pixData.point_of_interaction?.transaction_data?.qr_code;
       const qrCodeBase64 = pixData.point_of_interaction?.transaction_data?.qr_code_base64;
 
-      // Update order with payment info
-      await supabase
+      await supabaseAdmin
         .from('orders')
         .update({
           payment_status: 'pending',
@@ -168,7 +169,6 @@ serve(async (req) => {
       };
 
     } else {
-      // Create Checkout Pro preference for card
       const preferencePayload = {
         items: [
           {
@@ -179,7 +179,7 @@ serve(async (req) => {
           },
         ],
         payer: {
-          email: customer_email || 'cliente@delivery.com',
+          email: customer_email || user.email || 'cliente@delivery.com',
         },
         external_reference: order_id,
         back_urls: {
@@ -190,8 +190,6 @@ serve(async (req) => {
         auto_return: 'approved',
         notification_url: `${supabaseUrl}/functions/v1/mercadopago-webhook`,
       };
-
-      console.log('Creating preference:', preferencePayload);
 
       const prefResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
         method: 'POST',
@@ -205,17 +203,14 @@ serve(async (req) => {
       const prefData = await prefResponse.json();
 
       if (!prefResponse.ok) {
-        console.error('Preference creation failed:', prefData);
+        console.error('Preference creation failed');
         return new Response(
-          JSON.stringify({ error: 'Erro ao criar checkout', details: prefData }),
+          JSON.stringify({ error: 'Erro ao criar checkout' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      console.log('Preference created:', prefData.id);
-
-      // Update order with preference info
-      await supabase
+      await supabaseAdmin
         .from('orders')
         .update({
           payment_status: 'pending',
@@ -236,11 +231,10 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('Payment creation error:', error);
-    const message = error instanceof Error ? error.message : 'Erro desconhecido';
     return new Response(
-      JSON.stringify({ error: 'Erro interno', message }),
+      JSON.stringify({ error: 'Erro interno' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

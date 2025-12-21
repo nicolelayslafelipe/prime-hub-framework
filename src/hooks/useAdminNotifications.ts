@@ -29,7 +29,6 @@ export function useAdminNotifications() {
       if (fetchError) throw fetchError;
       setNotifications((data || []) as AdminNotification[]);
     } catch (err) {
-      console.error('Error fetching notifications:', err);
       setError(err as Error);
     } finally {
       setLoading(false);
@@ -48,8 +47,8 @@ export function useAdminNotifications() {
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, is_read: true } : n)
       );
-    } catch (err) {
-      console.error('Error marking notification as read:', err);
+    } catch {
+      // Error handled silently
     }
   }, []);
 
@@ -63,8 +62,8 @@ export function useAdminNotifications() {
       if (updateError) throw updateError;
       
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    } catch (err) {
-      console.error('Error marking all notifications as read:', err);
+    } catch {
+      // Error handled silently
     }
   }, []);
 
@@ -78,8 +77,8 @@ export function useAdminNotifications() {
       if (deleteError) throw deleteError;
       
       setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch (err) {
-      console.error('Error deleting notification:', err);
+    } catch {
+      // Error handled silently
     }
   }, []);
 
@@ -88,7 +87,6 @@ export function useAdminNotifications() {
   useEffect(() => {
     fetchNotifications();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel('admin-notifications-changes')
       .on(
@@ -99,7 +97,6 @@ export function useAdminNotifications() {
           table: 'admin_notifications',
         },
         (payload) => {
-          console.log('New notification received:', payload);
           const newNotification = payload.new as AdminNotification;
           setNotifications(prev => [newNotification, ...prev]);
         }

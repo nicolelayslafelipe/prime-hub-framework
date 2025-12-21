@@ -18,19 +18,19 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.get-mapbox-token]
-verify_jwt = false
+verify_jwt = true
 
 [functions.geocode-address]
-verify_jwt = false
+verify_jwt = true
 
 [functions.calculate-delivery-fee]
-verify_jwt = false
+verify_jwt = true
 
 [functions.calculate-eta]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-mercadopago-payment]
-verify_jwt = false
+verify_jwt = true
 
 [functions.mercadopago-webhook]
 verify_jwt = false
@@ -39,7 +39,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-push-notification]
-verify_jwt = false
+verify_jwt = true
 
 [functions.update-payment-credentials]
 verify_jwt = true

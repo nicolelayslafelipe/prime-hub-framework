@@ -16,38 +16,64 @@ interface PushPayload {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Validate authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if caller has admin role
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: hasAdminRole } = await supabaseAdmin
+      .rpc('has_role', { _user_id: user.id, _role: 'admin' });
+
+    if (!hasAdminRole) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Permissão negada' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const payload: PushPayload = await req.json();
     const { user_id, title, body, tag, data } = payload;
 
-    console.log('Sending push notification to user:', user_id);
-    console.log('Title:', title);
-    console.log('Body:', body);
-
-    // Check if user has push notifications enabled
-    const { data: preferences, error: prefError } = await supabase
+    // Check if target user has push notifications enabled
+    const { data: preferences, error: prefError } = await supabaseAdmin
       .from('client_preferences')
       .select('push_notifications')
       .eq('user_id', user_id)
       .maybeSingle();
 
     if (prefError) {
-      console.error('Error fetching preferences:', prefError);
       throw prefError;
     }
 
     if (!preferences?.push_notifications) {
-      console.log('User has push notifications disabled');
       return new Response(
         JSON.stringify({ success: false, reason: 'push_disabled' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -55,32 +81,22 @@ serve(async (req) => {
     }
 
     // Get user's push subscription
-    const { data: subscriptions, error: subError } = await supabase
+    const { data: subscriptions, error: subError } = await supabaseAdmin
       .from('push_subscriptions')
       .select('*')
       .eq('user_id', user_id);
 
     if (subError) {
-      console.error('Error fetching subscriptions:', subError);
       throw subError;
     }
 
     if (!subscriptions || subscriptions.length === 0) {
-      console.log('No push subscriptions found for user');
       return new Response(
         JSON.stringify({ success: false, reason: 'no_subscription' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Found', subscriptions.length, 'subscription(s)');
-
-    // Note: To actually send Web Push notifications, you would need:
-    // 1. VAPID keys (public and private)
-    // 2. The web-push library or similar
-    // For now, we log the notification and return success
-    // This can be expanded when VAPID keys are configured
-    
     const notificationPayload = {
       title,
       body,
@@ -88,29 +104,20 @@ serve(async (req) => {
       data: data || {},
     };
 
-    console.log('Notification payload:', JSON.stringify(notificationPayload));
-
-    // Return success - the client will receive the notification preference
-    // In production, you would use web-push library here with VAPID keys
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'Notification logged',
         subscriptions_count: subscriptions.length,
-        payload: notificationPayload
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('Error in send-push-notification:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ success: false, error: 'Erro interno' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
