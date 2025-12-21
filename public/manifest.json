@@ -1,0 +1,42 @@
+{
+  "name": "DeliveryOS",
+  "short_name": "DeliveryOS",
+  "description": "Sistema de Delivery Premium",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["food", "shopping", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Ver Pedidos",
+      "short_name": "Pedidos",
+      "description": "Acompanhe seus pedidos",
+      "url": "/orders",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}
