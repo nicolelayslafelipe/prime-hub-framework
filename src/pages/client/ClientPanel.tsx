@@ -250,8 +250,9 @@ export default function ClientPanel() {
                   />
                 </div>
               ) : (
-                <div className="h-20 w-20 rounded-xl bg-primary flex items-center justify-center shadow-glow-gold">
-                  <Store className="h-10 w-10 text-primary-foreground" />
+                <div className="h-20 w-20 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-accent flex items-center justify-center shadow-glow-gold relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.2),transparent_50%)]" />
+                  <Store className="h-10 w-10 text-primary-foreground drop-shadow-md relative z-10" />
                 </div>
               )}
               <div className="flex-1">
