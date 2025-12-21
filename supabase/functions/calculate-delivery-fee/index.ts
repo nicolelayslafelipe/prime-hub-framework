@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +18,7 @@ interface CalculateFeeRequest {
 
 interface CalculateFeeResponse {
   success: boolean;
-  distance: number; // in km
+  distance: number;
   fee: number;
   breakdown: {
     baseFee: number;
@@ -26,14 +27,13 @@ interface CalculateFeeResponse {
   };
 }
 
-// Haversine formula to calculate distance between two points
 function calculateHaversineDistance(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
 ): number {
-  const R = 6371; // Earth's radius in kilometers
+  const R = 6371;
   const dLat = toRadians(lat2 - lat1);
   const dLon = toRadians(lon2 - lon1);
   
@@ -47,7 +47,7 @@ function calculateHaversineDistance(
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
   
-  return Math.round(distance * 100) / 100; // Round to 2 decimal places
+  return Math.round(distance * 100) / 100;
 }
 
 function toRadians(degrees: number): number {
@@ -60,7 +60,6 @@ function calculateDeliveryFee(
   pricePerKm: number,
   minDistanceIncluded: number
 ): { fee: number; extraDistance: number; extraFee: number } {
-  // If distance is within minimum, only charge base fee
   if (distance <= minDistanceIncluded) {
     return {
       fee: baseFee,
@@ -69,7 +68,6 @@ function calculateDeliveryFee(
     };
   }
   
-  // Calculate extra distance and fee
   const extraDistance = distance - minDistanceIncluded;
   const extraFee = extraDistance * pricePerKm;
   const totalFee = baseFee + extraFee;
@@ -82,12 +80,35 @@ function calculateDeliveryFee(
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Validate authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const body: CalculateFeeRequest = await req.json();
     
     const {
@@ -100,7 +121,6 @@ serve(async (req) => {
       minDistanceIncluded,
     } = body;
 
-    // Validate required fields
     if (
       customerLatitude === undefined ||
       customerLongitude === undefined ||
@@ -108,18 +128,11 @@ serve(async (req) => {
       establishmentLongitude === undefined
     ) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Missing required coordinates",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ success: false, error: "Coordenadas inválidas" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Calculate distance using Haversine formula
     const distance = calculateHaversineDistance(
       establishmentLatitude,
       establishmentLongitude,
@@ -127,15 +140,12 @@ serve(async (req) => {
       customerLongitude
     );
 
-    // Calculate fee
     const { fee, extraDistance, extraFee } = calculateDeliveryFee(
       distance,
       baseFee || 5,
       pricePerKm || 2,
       minDistanceIncluded || 2
     );
-
-    console.log(`Distance calculation: ${distance}km, Fee: R$${fee}`);
 
     const response: CalculateFeeResponse = {
       success: true,
@@ -154,14 +164,8 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error calculating delivery fee:", error);
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ success: false, error: "Erro interno" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

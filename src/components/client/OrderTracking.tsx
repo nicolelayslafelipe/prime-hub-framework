@@ -58,12 +58,10 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
   const [isConnected, setIsConnected] = useState(false);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
 
-  // Update local order when prop changes
   useEffect(() => {
     setOrder(initialOrder);
   }, [initialOrder]);
 
-  // Fetch payment data for waiting_payment orders
   useEffect(() => {
     if (!initialOrder?.id || initialOrder.status !== 'waiting_payment') {
       setPaymentData(null);
@@ -80,7 +78,7 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
       if (data) {
         setPaymentData({
           mp_qr_code: data.mp_qr_code,
-          mp_qr_code_base64: null, // We don't store base64, just the code
+          mp_qr_code_base64: null,
           payment_status: data.payment_status,
         });
       }
@@ -89,7 +87,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
     fetchPaymentData();
   }, [initialOrder?.id, initialOrder?.status]);
 
-  // Subscribe to realtime updates for this specific order
   useEffect(() => {
     if (!isOpen || !initialOrder?.id) return;
 
@@ -104,7 +101,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
           filter: `id=eq.${initialOrder.id}`,
         },
         (payload) => {
-          console.log('Order updated in tracking:', payload);
           const updatedOrder = payload.new as {
             id: string;
             status: string;
@@ -123,7 +119,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
               : null
           );
 
-          // Update payment data
           if (updatedOrder.status === 'waiting_payment') {
             setPaymentData({
               mp_qr_code: updatedOrder.mp_qr_code,
@@ -134,7 +129,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
             setPaymentData(null);
           }
 
-          // Show toast when payment is approved
           if (updatedOrder.payment_status === 'approved') {
             toast.success('Pagamento aprovado!', {
               description: 'Seu pedido está sendo preparado.',
@@ -164,14 +158,9 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
   const isCancelled = order.status === 'cancelled';
   const isWaitingPayment = order.status === 'waiting_payment';
 
-  // Filter steps based on whether it's a payment order
   const displaySteps = isWaitingPayment || order.paymentMethod?.includes('Online')
     ? statusSteps
     : statusSteps.filter(s => s.status !== 'waiting_payment');
-
-  const adjustedStepIndex = isWaitingPayment || order.paymentMethod?.includes('Online')
-    ? currentStepIndex
-    : currentStepIndex - 1;
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -207,7 +196,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
             </div>
           ) : (
             <>
-              {/* Payment Section for waiting_payment */}
               {isWaitingPayment && paymentData?.mp_qr_code && (
                 <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-4">
                   <div className="flex items-center gap-2 text-amber-500">
@@ -221,7 +209,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
                     </p>
                   </div>
 
-                  {/* QR Code placeholder - show code to copy */}
                   <div className="flex justify-center">
                     <div className="p-4 bg-muted rounded-lg flex flex-col items-center gap-2">
                       <QrCode className="h-12 w-12 text-muted-foreground" />
@@ -255,7 +242,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
                 </div>
               )}
 
-              {/* Progress Steps */}
               <div className="relative">
                 {displaySteps.map((step, index) => {
                   const stepIndexValue = statusIndex[step.status];
@@ -265,7 +251,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
 
                   return (
                     <div key={step.status} className="flex gap-4 pb-8 last:pb-0">
-                      {/* Line */}
                       {index < displaySteps.length - 1 && (
                         <div 
                           className={cn(
@@ -276,7 +261,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
                         />
                       )}
                       
-                      {/* Icon */}
                       <div 
                         className={cn(
                           "relative z-10 h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500",
@@ -287,7 +271,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
                         <Icon className="h-5 w-5" />
                       </div>
 
-                      {/* Content */}
                       <div className="flex-1 pt-2">
                         <p className={cn(
                           "font-medium transition-colors duration-500",
@@ -306,7 +289,6 @@ export function OrderTracking({ isOpen, onClose, order: initialOrder }: OrderTra
                 })}
               </div>
 
-              {/* Order Info */}
               <div className="mt-8 space-y-4">
                 <div className="card-premium p-4">
                   <div className="flex items-center gap-3 mb-3">

@@ -23,7 +23,6 @@ interface PaymentMethodDB {
   sort_order: number;
 }
 
-// Mapeamento de tipos do banco para configurações do frontend
 const getMethodConfig = (type: string, isOnline: boolean = false): { 
   icon: LucideIcon; 
   description: string;
@@ -65,13 +64,10 @@ export function useClientPaymentMethods() {
 
       if (fetchError) throw fetchError;
 
-      // Mapear métodos do banco para o formato do frontend
       const mappedMethods: ClientPaymentMethod[] = [];
       
       (data || []).forEach((method: PaymentMethodDB) => {
-        // Para PIX e Cartão, criar versões online e offline se aplicável
         if (method.type === 'pix') {
-          // PIX Online (pagamento antecipado)
           const onlineConfig = getMethodConfig('pix', true);
           mappedMethods.push({
             id: onlineConfig.frontendId,
@@ -84,7 +80,6 @@ export function useClientPaymentMethods() {
             maxChange: null,
           });
           
-          // PIX na entrega
           const offlineConfig = getMethodConfig('pix', false);
           mappedMethods.push({
             id: offlineConfig.frontendId,
@@ -97,7 +92,6 @@ export function useClientPaymentMethods() {
             maxChange: null,
           });
         } else if (method.type === 'credit') {
-          // Cartão Online
           const onlineConfig = getMethodConfig('credit', true);
           mappedMethods.push({
             id: onlineConfig.frontendId,
@@ -110,7 +104,6 @@ export function useClientPaymentMethods() {
             maxChange: null,
           });
           
-          // Cartão na entrega
           const offlineConfig = getMethodConfig('credit', false);
           mappedMethods.push({
             id: offlineConfig.frontendId,
@@ -123,7 +116,6 @@ export function useClientPaymentMethods() {
             maxChange: null,
           });
         } else {
-          // Outros métodos (débito, dinheiro, voucher)
           const config = getMethodConfig(method.type);
           mappedMethods.push({
             id: config.frontendId,
@@ -139,8 +131,7 @@ export function useClientPaymentMethods() {
       });
 
       setMethods(mappedMethods);
-    } catch (err) {
-      console.error('Error fetching payment methods:', err);
+    } catch {
       setError('Erro ao carregar formas de pagamento');
     } finally {
       setIsLoading(false);
@@ -150,7 +141,6 @@ export function useClientPaymentMethods() {
   useEffect(() => {
     fetchActiveMethods();
 
-    // Realtime subscription para mudanças
     const channel = supabase
       .channel('client_payment_methods_changes')
       .on(
@@ -161,7 +151,6 @@ export function useClientPaymentMethods() {
           table: 'payment_methods',
         },
         () => {
-          console.log('Payment methods changed, refetching...');
           fetchActiveMethods();
         }
       )
@@ -172,17 +161,14 @@ export function useClientPaymentMethods() {
     };
   }, [fetchActiveMethods]);
 
-  // Verificar se um método específico está ativo
   const isMethodActive = useCallback((methodId: string): boolean => {
     return methods.some(m => m.id === methodId);
   }, [methods]);
 
-  // Obter método pelo ID
   const getMethodById = useCallback((methodId: string): ClientPaymentMethod | undefined => {
     return methods.find(m => m.id === methodId);
   }, [methods]);
 
-  // Obter max change para dinheiro
   const getCashMaxChange = useCallback((): number | null => {
     const cashMethod = methods.find(m => m.type === 'cash');
     return cashMethod?.maxChange ?? null;
