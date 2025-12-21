@@ -77,7 +77,7 @@ const mapDbItemToOrderItem = (dbItem: DbOrderItem): OrderItem => ({
 
 interface UseRealtimeOrdersOptions {
   onNewOrder?: (order: Order) => void;
-  onOrderUpdate?: (order: Order) => void;
+  onOrderUpdate?: (order: Order, oldStatus?: OrderStatus) => void;
 }
 
 export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
@@ -158,6 +158,7 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
       } else if (payload.eventType === 'UPDATE') {
         const updatedOrder = payload.new as DbOrder;
         const oldOrder = payload.old as DbOrder;
+        const oldStatus = oldOrder.status as OrderStatus;
 
         // If order was waiting_payment and now has a different status, add it to the list
         if (oldOrder.status === 'waiting_payment' && updatedOrder.status !== 'waiting_payment') {
@@ -187,8 +188,8 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
           prev.map((order) => {
             if (order.id === updatedOrder.id) {
               const updated = { ...order, ...mapDbOrderToOrder(updatedOrder, order.items) };
-              // Call onOrderUpdate callback
-              onOrderUpdate?.(updated);
+              // Call onOrderUpdate callback with old status
+              onOrderUpdate?.(updated, oldStatus);
               return updated;
             }
             return order;

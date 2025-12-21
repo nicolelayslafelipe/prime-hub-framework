@@ -2,6 +2,22 @@
 
 export type UserRole = 'admin' | 'client' | 'kitchen' | 'motoboy';
 
+// Sound Event Types - All events that should trigger sounds
+export type SoundEventType =
+  | 'new_order'           // Novo pedido recebido (admin)
+  | 'order_paid'          // Pagamento confirmado (PIX)
+  | 'order_to_kitchen'    // Pedido enviado para cozinha
+  | 'order_ready'         // Pedido pronto
+  | 'order_delivering'    // Saiu para entrega
+  | 'order_delivered'     // Pedido entregue
+  | 'order_cancelled'     // Cancelamento
+  | 'motoboy_assigned'    // Pedido atribuído ao motoboy
+  | 'motoboy_available'   // Pedido disponível para motoboy
+  | 'system_alert';       // Alerta do sistema
+
+// Panel types for sound configuration
+export type SoundPanelType = 'admin' | 'kitchen' | 'motoboy';
+
 export interface User {
   id: string;
   name: string;

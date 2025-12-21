@@ -1,8 +1,11 @@
+import { useEffect } from 'react';
 import { useOrders } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSound } from '@/contexts/SoundContext';
 import { Logo } from '@/components/shared/Logo';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
+import { SoundIndicator } from '@/components/shared/SoundIndicator';
 import { DeliveryMap } from '@/components/shared/DeliveryMap';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +39,32 @@ export default function MotoboyPanel() {
   const { orders, updateOrderStatus, isLoading, connectionStatus } = useOrders();
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const { 
+    initializeAudio, 
+    isAudioInitialized, 
+    motoboySettings, 
+    isPlayingMotoboy,
+    soundPlaybackFailed 
+  } = useSound();
+
+  // Initialize audio on first user interaction
+  useEffect(() => {
+    const handleInteraction = () => {
+      if (!isAudioInitialized) {
+        initializeAudio();
+      }
+    };
+
+    document.addEventListener('click', handleInteraction, { once: true });
+    document.addEventListener('keydown', handleInteraction, { once: true });
+    document.addEventListener('touchstart', handleInteraction, { once: true });
+
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+    };
+  }, [isAudioInitialized, initializeAudio]);
 
   const availableOrders = orders.filter((o) => o.status === 'ready');
   const myDeliveries = orders.filter((o) => o.status === 'out_for_delivery');
@@ -87,6 +116,13 @@ export default function MotoboyPanel() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {/* Sound Indicator */}
+            <SoundIndicator
+              isPlaying={isPlayingMotoboy}
+              isEnabled={motoboySettings?.enabled ?? true}
+              size="sm"
+              className={soundPlaybackFailed ? 'text-destructive' : ''}
+            />
             <ConnectionStatus status={connectionStatus} />
             <div className="h-6 w-px bg-border" />
             <div className="flex items-center gap-2 text-sm">
