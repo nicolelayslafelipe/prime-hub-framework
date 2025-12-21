@@ -176,20 +176,20 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
     
     const result = await searchCep(cleanCep);
     
-    if (result) {
+    if (result.success && result.data) {
       // Preencher campos com dados da API
       setNewAddress(prev => ({
         ...prev,
-        city: result.city,
-        state: result.state,
-        street: result.street || prev.street,
-        neighborhood: result.neighborhood || prev.neighborhood,
+        city: result.data!.city,
+        state: result.data!.state,
+        street: result.data!.street || prev.street,
+        neighborhood: result.data!.neighborhood || prev.neighborhood,
       }));
       
       // Feedback ao usuário
-      if (result.isPartial) {
+      if (result.data.isPartial) {
         toast.info('CEP encontrado', {
-          description: `${result.city} - ${result.state}. Preencha rua e bairro.`,
+          description: `${result.data.city} - ${result.data.state}. Preencha rua e bairro.`,
         });
         setTimeout(() => {
           document.getElementById('checkout-street')?.focus();
@@ -200,9 +200,14 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
           document.getElementById('checkout-number')?.focus();
         }, 100);
       }
-    } else {
+    } else if (result.errorType === 'not_found') {
       toast.error('CEP não encontrado', {
         description: 'Verifique o CEP e tente novamente.',
+      });
+    } else {
+      // Erro de rede - permitir preenchimento manual
+      toast.warning('Não foi possível buscar o CEP', {
+        description: 'Você pode preencher o endereço manualmente.',
       });
     }
   }, [newAddress.zip_code, searchCep, lastSearchedCep, cepStatus]);

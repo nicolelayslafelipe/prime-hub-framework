@@ -119,22 +119,22 @@ export default function ClientAddresses() {
     
     const result = await searchCep(cleanCep);
     
-    if (result) {
+    if (result.success && result.data) {
       // Preencher campos com dados da API
-      form.setValue('city', result.city, { shouldValidate: true });
-      form.setValue('state', result.state, { shouldValidate: true });
+      form.setValue('city', result.data.city, { shouldValidate: true });
+      form.setValue('state', result.data.state, { shouldValidate: true });
       
-      if (result.street) {
-        form.setValue('street', result.street, { shouldValidate: true });
+      if (result.data.street) {
+        form.setValue('street', result.data.street, { shouldValidate: true });
       }
-      if (result.neighborhood) {
-        form.setValue('neighborhood', result.neighborhood, { shouldValidate: true });
+      if (result.data.neighborhood) {
+        form.setValue('neighborhood', result.data.neighborhood, { shouldValidate: true });
       }
       
       // Feedback ao usuário
-      if (result.isPartial) {
+      if (result.data.isPartial) {
         toast.info('CEP encontrado', {
-          description: `${result.city} - ${result.state}. Preencha rua e bairro.`,
+          description: `${result.data.city} - ${result.data.state}. Preencha rua e bairro.`,
         });
         setTimeout(() => {
           document.getElementById('street')?.focus();
@@ -145,9 +145,14 @@ export default function ClientAddresses() {
           document.getElementById('number')?.focus();
         }, 100);
       }
-    } else {
+    } else if (result.errorType === 'not_found') {
       toast.error('CEP não encontrado', {
         description: 'Verifique o CEP e tente novamente.',
+      });
+    } else {
+      // Erro de rede - permitir preenchimento manual
+      toast.warning('Não foi possível buscar o CEP', {
+        description: 'Você pode preencher o endereço manualmente.',
       });
     }
   }, [form, searchCep, lastSearchedCep, cepStatus]);
