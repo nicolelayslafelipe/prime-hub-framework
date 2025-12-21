@@ -863,36 +863,6 @@ export function Checkout({ isOpen, onClose, onOrderPlaced }: CheckoutProps) {
                         );
                       })}
                       
-                      {/* New address option */}
-                      <div
-                        onClick={() => {
-                          setDeliveryAddressType('custom');
-                          setSelectedAddressId(null);
-                          resetNewAddressForm();
-                          // Reset delivery calculations
-                          setCalculatedDeliveryFee(null);
-                          setDeliveryDistance(null);
-                          setIsOutsideDeliveryArea(false);
-                          setEstimatedTime(null);
-                        }}
-                        className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                          showNewAddressForm
-                            ? 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20' 
-                            : 'border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground'
-                        }`}
-                      >
-                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                          showNewAddressForm
-                            ? 'border-primary bg-primary'
-                            : 'border-muted-foreground'
-                        }`}>
-                          {showNewAddressForm && (
-                            <CheckCircle2 className="h-3 w-3 text-primary-foreground" />
-                          )}
-                        </div>
-                        <Plus className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Entregar em outro endereço</span>
-                      </div>
                     </div>
                   </div>
                 ) : null}
