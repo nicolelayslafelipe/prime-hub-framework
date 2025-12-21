@@ -242,11 +242,11 @@ export default function ClientPanel() {
             {/* Store Info */}
             <div className="flex flex-col md:flex-row md:items-center gap-6">
               {config.establishment.logo ? (
-                <div className="h-20 w-20 rounded-xl overflow-hidden border border-border/30 bg-background shadow-glow-gold">
+                <div className="h-20 w-20 rounded-xl overflow-hidden border-2 border-primary/20 bg-card shadow-glow-gold p-1">
                   <img 
                     src={config.establishment.logo} 
                     alt={config.establishment.name || 'Logo'}
-                    className="h-full w-full object-contain"
+                    className="h-full w-full object-cover rounded-lg"
                   />
                 </div>
               ) : (
