@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useOrders } from '@/contexts/OrderContext';
 import { useSound } from '@/contexts/SoundContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,11 +6,12 @@ import { Logo } from '@/components/shared/Logo';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
 import { SoundIndicator } from '@/components/shared/SoundIndicator';
+import { OrderDetailsModal } from '@/components/shared/OrderDetailsModal';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { OrderStatus } from '@/types';
-import { Clock, ChefHat, CheckCircle2, Coins, VolumeX, LogOut, User } from 'lucide-react';
+import { Order, OrderStatus } from '@/types';
+import { Clock, ChefHat, CheckCircle2, Coins, VolumeX, LogOut, User, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -71,6 +72,20 @@ export default function KitchenPanel() {
   } = useSound();
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setIsModalOpen(true);
+  };
+
+  const handleModalUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
+    stopKitchenRepeat();
+    markOrderAsAlerted(orderId);
+    await updateOrderStatus(orderId, newStatus);
+    setIsModalOpen(false);
+  };
 
   // Initialize audio on first user interaction
   useEffect(() => {
@@ -192,7 +207,17 @@ export default function KitchenPanel() {
                             {formatDistanceToNow(order.createdAt, { addSuffix: true, locale: ptBR })}
                           </div>
                         </div>
-                        <StatusBadge status={order.status} size="lg" />
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleViewOrder(order)}
+                            className="h-8 w-8"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <StatusBadge status={order.status} size="lg" />
+                        </div>
                       </div>
                       <div className="space-y-2 mb-4">
                         {order.items.map((item) => (
@@ -254,7 +279,17 @@ export default function KitchenPanel() {
                             {formatDistanceToNow(order.createdAt, { addSuffix: true, locale: ptBR })}
                           </div>
                         </div>
-                        <StatusBadge status={order.status} size="lg" />
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleViewOrder(order)}
+                            className="h-8 w-8"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <StatusBadge status={order.status} size="lg" />
+                        </div>
                       </div>
                       <div className="space-y-2 mb-4">
                         {order.items.map((item) => (
@@ -304,7 +339,17 @@ export default function KitchenPanel() {
                             {formatDistanceToNow(order.createdAt, { addSuffix: true, locale: ptBR })}
                           </div>
                         </div>
-                        <StatusBadge status={order.status} size="lg" />
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleViewOrder(order)}
+                            className="h-8 w-8"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <StatusBadge status={order.status} size="lg" />
+                        </div>
                       </div>
                       <div className="space-y-2 mb-4">
                         {order.items.map((item) => (
@@ -327,6 +372,15 @@ export default function KitchenPanel() {
           </div>
         </div>
       </main>
+
+      {/* Order Details Modal */}
+      <OrderDetailsModal
+        order={selectedOrder}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onUpdateStatus={handleModalUpdateStatus}
+        showActions={true}
+      />
     </div>
   );
 }
