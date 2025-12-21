@@ -1,1 +1,4 @@
 project_id = "lujdjwqbsqterbcvzyvo"
+
+[functions.cep-lookup]
+verify_jwt = false
