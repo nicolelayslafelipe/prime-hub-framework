@@ -1,21 +1,20 @@
-import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { mockMessageTemplates } from '@/data/mockData';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { MessageSquare } from 'lucide-react';
-import { toast } from 'sonner';
+import { MessageSquare, Loader2 } from 'lucide-react';
+import { useMessageTemplates } from '@/hooks/useMessageTemplates';
 
 export default function AdminEditableMessages() {
-  const [templates, setTemplates] = useState(mockMessageTemplates);
+  const { templates, isLoading, isSaving, updateTemplate } = useMessageTemplates();
 
-  const updateTemplate = (id: string, content: string) => {
-    setTemplates(prev => prev.map(t => t.id === id ? { ...t, content } : t));
-  };
-
-  const handleSave = () => {
-    toast.success('Mensagens salvas!');
-  };
+  if (isLoading) {
+    return (
+      <AdminLayout title="Mensagens Editáveis" subtitle="Personalize as mensagens automáticas">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout title="Mensagens Editáveis" subtitle="Personalize as mensagens automáticas">
@@ -28,14 +27,19 @@ export default function AdminEditableMessages() {
         {templates.map(template => (
           <div key={template.id} className="card-premium p-4">
             <h4 className="font-medium mb-2">{template.name}</h4>
-            <Textarea value={template.content} onChange={e => updateTemplate(template.id, e.target.value)} rows={3} />
+            <Textarea 
+              value={template.content} 
+              onChange={e => updateTemplate(template.id, e.target.value)} 
+              rows={3}
+              disabled={isSaving}
+            />
             <div className="mt-2 flex flex-wrap gap-1">
-              {template.variables.map(v => <span key={v} className="text-xs px-2 py-0.5 rounded bg-muted">{`{${v}}`}</span>)}
+              {template.variables.map(v => (
+                <span key={v} className="text-xs px-2 py-0.5 rounded bg-muted">{`{${v}}`}</span>
+              ))}
             </div>
           </div>
         ))}
-
-        <Button onClick={handleSave} className="w-full">Salvar Mensagens</Button>
       </div>
     </AdminLayout>
   );

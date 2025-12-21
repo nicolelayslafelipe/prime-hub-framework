@@ -1,17 +1,21 @@
-import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { StatusToggle } from '@/components/admin/StatusToggle';
-import { mockPaymentMethods } from '@/data/mockData';
 import { Input } from '@/components/ui/input';
-import { CreditCard, Banknote } from 'lucide-react';
+import { Banknote, Loader2 } from 'lucide-react';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
 export default function AdminPaymentMethods() {
-  const [methods, setMethods] = useState(mockPaymentMethods);
-  const [maxChange, setMaxChange] = useState(200);
+  const { methods, isLoading, isSaving, toggleMethod, updateMaxChange } = usePaymentMethods();
 
-  const toggleMethod = (id: string) => {
-    setMethods(prev => prev.map(m => m.id === id ? { ...m, isActive: !m.isActive } : m));
-  };
+  if (isLoading) {
+    return (
+      <AdminLayout title="Formas de Pagamento" subtitle="Configure os métodos de pagamento aceitos">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout title="Formas de Pagamento" subtitle="Configure os métodos de pagamento aceitos">
@@ -19,13 +23,14 @@ export default function AdminPaymentMethods() {
         {methods.map(method => (
           <div key={method.id} className="card-premium p-4">
             <StatusToggle
-              checked={method.isActive}
+              checked={method.is_active}
               onCheckedChange={() => toggleMethod(method.id)}
-              label={`${method.icon} ${method.name}`}
+              label={`${method.icon || '💳'} ${method.name}`}
               activeLabel="Ativo"
               inactiveLabel="Desativado"
+              disabled={isSaving}
             />
-            {method.type === 'cash' && method.isActive && (
+            {method.type === 'cash' && method.is_active && (
               <div className="mt-4 pt-4 border-t border-border">
                 <div className="flex items-center gap-4">
                   <Banknote className="h-5 w-5 text-muted-foreground" />
@@ -35,7 +40,13 @@ export default function AdminPaymentMethods() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">R$</span>
-                    <Input type="number" value={maxChange} onChange={e => setMaxChange(Number(e.target.value))} className="w-24" />
+                    <Input 
+                      type="number" 
+                      value={method.max_change || 200} 
+                      onChange={e => updateMaxChange(method.id, Number(e.target.value))} 
+                      className="w-24"
+                      disabled={isSaving}
+                    />
                   </div>
                 </div>
               </div>

@@ -1,17 +1,21 @@
-import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { mockApiIntegrations } from '@/data/mockData';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Key, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-import { ApiIntegration } from '@/types';
+import { Key, CheckCircle, XCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { useApiIntegrations } from '@/hooks/useApiIntegrations';
 
 export default function AdminApiConfig() {
-  const [integrations, setIntegrations] = useState(mockApiIntegrations);
+  const { integrations, isLoading, isSaving, toggleIntegration } = useApiIntegrations();
 
-  const toggleIntegration = (id: string) => {
-    setIntegrations(prev => prev.map(i => i.id === id ? { ...i, isActive: !i.isActive } : i));
-  };
+  if (isLoading) {
+    return (
+      <AdminLayout title="Configuração API" subtitle="Gerencie integrações externas">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout title="Configuração API" subtitle="Gerencie integrações externas">
@@ -31,13 +35,31 @@ export default function AdminApiConfig() {
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-1">
-                {integration.status === 'connected' && <><CheckCircle className="h-4 w-4 text-accent" /><span className="text-sm text-accent">Conectado</span></>}
-                {integration.status === 'error' && <><XCircle className="h-4 w-4 text-destructive" /><span className="text-sm text-destructive">Erro</span></>}
-                {integration.status === 'disconnected' && <span className="text-sm text-muted-foreground">Desconectado</span>}
+                {integration.status === 'connected' && (
+                  <>
+                    <CheckCircle className="h-4 w-4 text-accent" />
+                    <span className="text-sm text-accent">Conectado</span>
+                  </>
+                )}
+                {integration.status === 'error' && (
+                  <>
+                    <XCircle className="h-4 w-4 text-destructive" />
+                    <span className="text-sm text-destructive">Erro</span>
+                  </>
+                )}
+                {integration.status === 'disconnected' && (
+                  <span className="text-sm text-muted-foreground">Desconectado</span>
+                )}
               </div>
             </div>
-            <Switch checked={integration.isActive} onCheckedChange={() => toggleIntegration(integration.id)} />
-            <Button variant="ghost" size="icon"><RefreshCw className="h-4 w-4" /></Button>
+            <Switch 
+              checked={integration.is_active} 
+              onCheckedChange={() => toggleIntegration(integration.id)}
+              disabled={isSaving}
+            />
+            <Button variant="ghost" size="icon" disabled={isSaving}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </div>
         ))}
       </div>
