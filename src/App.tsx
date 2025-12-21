@@ -17,6 +17,7 @@ import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 // Pages
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/auth/AuthPage";
+import ResetPassword from "./pages/auth/ResetPassword";
 
 import ClientPanel from "./pages/client/ClientPanel";
 import ClientProfile from "./pages/client/ClientProfile";
@@ -74,6 +75,7 @@ const App = () => (
                       <Routes>
                         {/* Public Routes */}
                         <Route path="/" element={<ClientPanel />} />
+                        <Route path="/auth/reset-password" element={<ResetPassword />} />
                         <Route path="/auth" element={<AuthPage />} />
 
                         {/* Protected Client Routes */}
