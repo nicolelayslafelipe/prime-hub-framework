@@ -71,12 +71,8 @@ export function useAddressSearch(): UseAddressSearchReturn {
     setErrorMessage(null);
 
     try {
-      // Use Supabase client to call edge function
+      // Use Supabase client to call edge function (always POST with body)
       const { data, error } = await supabase.functions.invoke('geocode-address', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: { q: trimmedQuery },
       });
 
