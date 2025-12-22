@@ -57,6 +57,8 @@ import AdminAuditLogs from "./pages/admin/AuditLogs";
 import AdminPDV from "./pages/admin/PDV";
 import AdminPDVHistory from "./pages/admin/PDVHistory";
 import AdminMapboxConfig from "./pages/admin/MapboxConfig";
+import AdminIntegrationStatus from "./pages/admin/IntegrationStatus";
+
 // Panel Pages
 import KitchenPanel from "./pages/kitchen/KitchenPanel";
 import MotoboyPanel from "./pages/motoboy/MotoboyPanel";
@@ -123,6 +125,7 @@ const App = () => (
                           <Route path="/admin/coupon-reports" element={<SidebarProvider><AdminCouponReports /></SidebarProvider>} />
                           <Route path="/admin/audit-logs" element={<SidebarProvider><AdminAuditLogs /></SidebarProvider>} />
                           <Route path="/admin/mapbox" element={<SidebarProvider><AdminMapboxConfig /></SidebarProvider>} />
+                          <Route path="/admin/integration-status" element={<SidebarProvider><AdminIntegrationStatus /></SidebarProvider>} />
                         </Route>
 
                         {/* Protected Kitchen Route */}

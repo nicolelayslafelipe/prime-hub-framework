@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { NotificationDropdown } from './NotificationDropdown';
 import { useSound } from '@/contexts/SoundContext';
+import { IntegrationAlertBanner } from './IntegrationAlertBanner';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -48,6 +49,9 @@ export function AdminLayout({ children, title, subtitle, headerRight }: AdminLay
           isCollapsed ? 'ml-[72px]' : 'ml-64'
         )}
       >
+        {/* Integration Alert Banner */}
+        <IntegrationAlertBanner />
+
         {/* Header */}
         <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm border-b border-border">
           <div className="flex h-16 items-center justify-between px-6">
