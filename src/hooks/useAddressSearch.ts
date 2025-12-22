@@ -71,34 +71,25 @@ export function useAddressSearch(): UseAddressSearchReturn {
     setErrorMessage(null);
 
     try {
-      // Get user session for authentication
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      // Use Supabase client to call edge function
+      const { data, error } = await supabase.functions.invoke('geocode-address', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: { q: trimmedQuery },
+      });
 
-      if (!token) {
+      if (error) {
+        console.error('[useAddressSearch] Supabase error:', error);
+        setResults([]);
         setStatus('error');
-        setErrorMessage('Você precisa estar logado para buscar endereços');
+        setErrorMessage(error.message || 'Erro ao buscar endereço');
         isSearchingRef.current = false;
         return;
       }
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const encodedQuery = encodeURIComponent(trimmedQuery);
-      const url = `${supabaseUrl}/functions/v1/geocode-address?q=${encodedQuery}`;
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'apikey': anonKey,
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.success && Array.isArray(data.results)) {
+      if (data?.success && Array.isArray(data.results)) {
         setResults(data.results);
         setStatus('success');
         setErrorMessage(null);
@@ -107,7 +98,7 @@ export function useAddressSearch(): UseAddressSearchReturn {
       } else {
         setResults([]);
         setStatus('error');
-        setErrorMessage(data.error || 'Erro ao buscar endereço');
+        setErrorMessage(data?.error || 'Erro ao buscar endereço');
       }
     } catch (error) {
       console.error('[useAddressSearch] Error:', error);
