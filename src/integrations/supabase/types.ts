@@ -604,6 +604,87 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_logs: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event_type: string
+          id: string
+          integration_key: string
+          message: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event_type: string
+          id?: string
+          integration_key: string
+          message?: string | null
+          status: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+          integration_key?: string
+          message?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      integration_status: {
+        Row: {
+          config: Json | null
+          created_at: string
+          error_count: number
+          error_message: string | null
+          id: string
+          integration_key: string
+          integration_name: string
+          is_active: boolean
+          last_check: string | null
+          last_error: string | null
+          last_success: string | null
+          latency_ms: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          error_count?: number
+          error_message?: string | null
+          id?: string
+          integration_key: string
+          integration_name: string
+          is_active?: boolean
+          last_check?: string | null
+          last_error?: string | null
+          last_success?: string | null
+          latency_ms?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          error_count?: number
+          error_message?: string | null
+          id?: string
+          integration_key?: string
+          integration_name?: string
+          is_active?: boolean
+          last_check?: string | null
+          last_error?: string | null
+          last_success?: string | null
+          latency_ms?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       loyalty_rewards: {
         Row: {
           created_at: string | null

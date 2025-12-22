@@ -23,13 +23,17 @@ interface MercadoPagoConfig {
   status: 'disconnected' | 'connected' | 'error';
   credentialsVersion: number;
   lastUpdated?: string;
+  sandboxConfigured?: boolean;
+  productionConfigured?: boolean;
 }
 
 const defaultConfig: MercadoPagoConfig = {
   isActive: false,
   environment: 'test',
   status: 'disconnected',
-  credentialsVersion: 1
+  credentialsVersion: 1,
+  sandboxConfigured: false,
+  productionConfigured: false
 };
 
 export default function AdminMercadoPago() {
@@ -58,8 +62,22 @@ export default function AdminMercadoPago() {
       return;
     }
 
-    if (!newToken.startsWith('APP_USR-') && !newToken.startsWith('TEST-')) {
-      toast.error('Token inválido. Deve começar com APP_USR- ou TEST-');
+    const isTestToken = newToken.startsWith('TEST-');
+    const isProdToken = newToken.startsWith('APP_USR-');
+
+    if (!isTestToken && !isProdToken) {
+      toast.error('Token inválido. Deve começar com APP_USR- (produção) ou TEST- (sandbox)');
+      return;
+    }
+
+    // Validate token matches environment
+    if (config.environment === 'production' && isTestToken) {
+      toast.error('Você está em ambiente de produção mas inseriu um token de teste (TEST-)');
+      return;
+    }
+
+    if (config.environment === 'test' && isProdToken) {
+      toast.error('Você está em ambiente de teste mas inseriu um token de produção (APP_USR-)');
       return;
     }
 
@@ -68,7 +86,8 @@ export default function AdminMercadoPago() {
       const { data, error } = await supabase.functions.invoke('update-payment-credentials', {
         body: { 
           provider: 'mercadopago',
-          accessToken: newToken 
+          accessToken: newToken,
+          environment: config.environment
         }
       });
 
@@ -84,7 +103,8 @@ export default function AdminMercadoPago() {
         ...config,
         status: 'connected',
         credentialsVersion: (config.credentialsVersion || 1) + 1,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        [config.environment === 'test' ? 'sandboxConfigured' : 'productionConfigured']: true
       };
       setConfig(newConfig);
       updateValue(newConfig);
@@ -196,7 +216,10 @@ export default function AdminMercadoPago() {
                 </Button>
               </div>
               {config.environment === 'test' && (
-                <p className="text-sm text-yellow-500">⚠️ Modo teste: pagamentos não serão processados de verdade</p>
+                <p className="text-sm text-yellow-500">⚠️ Modo teste: pagamentos não serão processados de verdade. Use tokens que começam com TEST-</p>
+              )}
+              {config.environment === 'production' && (
+                <p className="text-sm text-destructive">🔴 Modo produção: pagamentos reais serão processados. Use tokens que começam com APP_USR-</p>
               )}
             </div>
 
@@ -222,24 +245,55 @@ export default function AdminMercadoPago() {
                 <h4 className="font-medium">Gerenciar Credenciais</h4>
               </div>
               
-              <div className="p-4 rounded-lg bg-muted/50 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Access Token</p>
-                    <p className="text-xs text-muted-foreground">
-                      {config.status === 'connected' 
-                        ? '••••••••••••••••••••' 
-                        : 'Não configurado'}
-                    </p>
+              <div className="space-y-3">
+                {/* Sandbox Token */}
+                <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Token Sandbox (Teste)</p>
+                      <p className="text-xs text-muted-foreground">
+                        {config.sandboxConfigured 
+                          ? '✓ Configurado' 
+                          : 'Não configurado'}
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        updateField('environment', 'test');
+                        setIsTokenDialogOpen(true);
+                      }}
+                      disabled={isSaving}
+                    >
+                      {config.sandboxConfigured ? 'Atualizar' : 'Configurar'}
+                    </Button>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setIsTokenDialogOpen(true)}
-                    disabled={isSaving}
-                  >
-                    {config.status === 'connected' ? 'Atualizar' : 'Configurar'}
-                  </Button>
+                </div>
+
+                {/* Production Token */}
+                <div className="p-4 rounded-lg bg-destructive/5 border border-destructive/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-destructive">Token Produção</p>
+                      <p className="text-xs text-muted-foreground">
+                        {config.productionConfigured 
+                          ? '✓ Configurado' 
+                          : 'Não configurado'}
+                      </p>
+                    </div>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={() => {
+                        updateField('environment', 'production');
+                        setIsTokenDialogOpen(true);
+                      }}
+                      disabled={isSaving}
+                    >
+                      {config.productionConfigured ? 'Atualizar' : 'Configurar'}
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -254,7 +308,7 @@ export default function AdminMercadoPago() {
                 ) : (
                   <RefreshCw className="h-4 w-4" />
                 )}
-                Testar Conexão
+                Testar Conexão ({config.environment === 'test' ? 'Sandbox' : 'Produção'})
               </Button>
             </div>
 
