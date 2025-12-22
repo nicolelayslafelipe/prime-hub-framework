@@ -745,6 +745,36 @@ export type Database = {
         }
         Relationships: []
       }
+      map_settings: {
+        Row: {
+          created_at: string | null
+          credentials_version: number | null
+          default_style: string | null
+          default_zoom: number | null
+          id: string
+          mapbox_token_encrypted: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credentials_version?: number | null
+          default_style?: string | null
+          default_zoom?: number | null
+          id?: string
+          mapbox_token_encrypted?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credentials_version?: number | null
+          default_style?: string | null
+          default_zoom?: number | null
+          id?: string
+          mapbox_token_encrypted?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       message_templates: {
         Row: {
           content: string
@@ -809,6 +839,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_status_logs: {
+        Row: {
+          changed_by: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          order_id: string
+          status: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          order_id: string
+          status: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_logs_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
@@ -958,6 +1023,62 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          checkout_url: string | null
+          created_at: string | null
+          external_id: string | null
+          id: string
+          metadata: Json | null
+          order_id: string
+          payer_document: string | null
+          payer_email: string | null
+          provider: string
+          qr_code: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          checkout_url?: string | null
+          created_at?: string | null
+          external_id?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id: string
+          payer_document?: string | null
+          payer_email?: string | null
+          provider?: string
+          qr_code?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          checkout_url?: string | null
+          created_at?: string | null
+          external_id?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id?: string
+          payer_document?: string | null
+          payer_email?: string | null
+          provider?: string
+          qr_code?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -1132,84 +1253,7 @@ export type Database = {
       }
     }
     Views: {
-      establishment_public: {
-        Row: {
-          accent_color: string | null
-          average_prep_time: number | null
-          average_rating: number | null
-          banner: string | null
-          banner_text: string | null
-          city: string | null
-          delivery_fee: number | null
-          description: string | null
-          estimated_delivery_time: number | null
-          id: string | null
-          is_delivery_enabled: boolean | null
-          is_open: boolean | null
-          logo: string | null
-          min_order_value: number | null
-          name: string | null
-          neighborhood: string | null
-          primary_color: string | null
-          selected_theme: string | null
-          show_banner: boolean | null
-          state: string | null
-          total_reviews: number | null
-          use_banner_as_login_bg: boolean | null
-          use_gradient: boolean | null
-        }
-        Insert: {
-          accent_color?: string | null
-          average_prep_time?: number | null
-          average_rating?: number | null
-          banner?: string | null
-          banner_text?: string | null
-          city?: string | null
-          delivery_fee?: number | null
-          description?: string | null
-          estimated_delivery_time?: number | null
-          id?: string | null
-          is_delivery_enabled?: boolean | null
-          is_open?: boolean | null
-          logo?: string | null
-          min_order_value?: number | null
-          name?: string | null
-          neighborhood?: string | null
-          primary_color?: string | null
-          selected_theme?: string | null
-          show_banner?: boolean | null
-          state?: string | null
-          total_reviews?: number | null
-          use_banner_as_login_bg?: boolean | null
-          use_gradient?: boolean | null
-        }
-        Update: {
-          accent_color?: string | null
-          average_prep_time?: number | null
-          average_rating?: number | null
-          banner?: string | null
-          banner_text?: string | null
-          city?: string | null
-          delivery_fee?: number | null
-          description?: string | null
-          estimated_delivery_time?: number | null
-          id?: string | null
-          is_delivery_enabled?: boolean | null
-          is_open?: boolean | null
-          logo?: string | null
-          min_order_value?: number | null
-          name?: string | null
-          neighborhood?: string | null
-          primary_color?: string | null
-          selected_theme?: string | null
-          show_banner?: boolean | null
-          state?: string | null
-          total_reviews?: number | null
-          use_banner_as_login_bg?: boolean | null
-          use_gradient?: boolean | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       get_public_establishment_info: {
