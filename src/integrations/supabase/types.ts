@@ -1139,22 +1139,17 @@ export type Database = {
           average_rating: number | null
           banner: string | null
           banner_text: string | null
-          base_delivery_fee: number | null
           city: string | null
           delivery_fee: number | null
           description: string | null
-          distance_fee_enabled: boolean | null
           estimated_delivery_time: number | null
           id: string | null
           is_delivery_enabled: boolean | null
           is_open: boolean | null
           logo: string | null
-          max_delivery_radius: number | null
-          min_distance_included: number | null
           min_order_value: number | null
           name: string | null
           neighborhood: string | null
-          price_per_km: number | null
           primary_color: string | null
           selected_theme: string | null
           show_banner: boolean | null
@@ -1169,22 +1164,17 @@ export type Database = {
           average_rating?: number | null
           banner?: string | null
           banner_text?: string | null
-          base_delivery_fee?: number | null
           city?: string | null
           delivery_fee?: number | null
           description?: string | null
-          distance_fee_enabled?: boolean | null
           estimated_delivery_time?: number | null
           id?: string | null
           is_delivery_enabled?: boolean | null
           is_open?: boolean | null
           logo?: string | null
-          max_delivery_radius?: number | null
-          min_distance_included?: number | null
           min_order_value?: number | null
           name?: string | null
           neighborhood?: string | null
-          price_per_km?: number | null
           primary_color?: string | null
           selected_theme?: string | null
           show_banner?: boolean | null
@@ -1199,22 +1189,17 @@ export type Database = {
           average_rating?: number | null
           banner?: string | null
           banner_text?: string | null
-          base_delivery_fee?: number | null
           city?: string | null
           delivery_fee?: number | null
           description?: string | null
-          distance_fee_enabled?: boolean | null
           estimated_delivery_time?: number | null
           id?: string | null
           is_delivery_enabled?: boolean | null
           is_open?: boolean | null
           logo?: string | null
-          max_delivery_radius?: number | null
-          min_distance_included?: number | null
           min_order_value?: number | null
           name?: string | null
           neighborhood?: string | null
-          price_per_km?: number | null
           primary_color?: string | null
           selected_theme?: string | null
           show_banner?: boolean | null
