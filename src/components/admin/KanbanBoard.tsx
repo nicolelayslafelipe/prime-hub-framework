@@ -75,7 +75,7 @@ export function KanbanBoard({ orders, onUpdateStatus, onViewOrder }: KanbanBoard
             <div
               key={column.id}
               className={cn(
-                'w-72 flex-shrink-0 rounded-xl border bg-card/50 transition-all duration-200',
+                'w-80 flex-shrink-0 rounded-xl border bg-card/50 transition-all duration-200',
                 isOver && 'ring-2 ring-primary border-primary bg-primary/5'
               )}
               onDragOver={(e) => handleDragOver(e, column.id)}
