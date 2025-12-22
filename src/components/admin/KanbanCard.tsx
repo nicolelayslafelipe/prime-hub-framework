@@ -95,12 +95,14 @@ export function KanbanCard({
       <div className="space-y-1.5 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <CreditCard className="h-3.5 w-3.5 flex-shrink-0" />
-          <span className="truncate">{order.paymentMethod}</span>
+          <span>{order.paymentMethod}</span>
         </div>
         {!isPDV && order.customerAddress && (
-          <div className="flex items-center gap-2">
-            <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-            <span className="truncate" title={order.customerAddress}>{order.customerAddress}</span>
+          <div className="flex items-start gap-2">
+            <MapPin className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+            <span className="text-xs leading-tight break-words" title={order.customerAddress}>
+              {order.customerAddress}
+            </span>
           </div>
         )}
         <div className="flex items-center gap-2">
@@ -132,20 +134,20 @@ export function KanbanCard({
         <p className="text-xs text-muted-foreground">
           {order.items.length} {order.items.length === 1 ? 'item' : 'itens'}
         </p>
-        <div className="mt-1.5 flex flex-wrap gap-1">
+        <div className="mt-1.5 space-y-1">
           {order.items.slice(0, 3).map((item, idx) => (
-            <span
+            <div
               key={idx}
-              className="text-xs bg-muted px-2 py-0.5 rounded-full truncate max-w-full"
+              className="text-xs bg-muted px-2 py-1 rounded"
               title={item.productName}
             >
-              {item.quantity}x {item.productName}
-            </span>
+              <span className="font-medium">{item.quantity}x</span> {item.productName}
+            </div>
           ))}
           {order.items.length > 3 && (
-            <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
-              +{order.items.length - 3} mais
-            </span>
+            <div className="text-xs text-muted-foreground px-2">
+              +{order.items.length - 3} mais itens
+            </div>
           )}
         </div>
       </div>
