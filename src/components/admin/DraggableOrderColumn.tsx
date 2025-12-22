@@ -9,6 +9,7 @@ interface DraggableOrderColumnProps {
   title: string;
   orders: Order[];
   onUpdateStatus: (orderId: string) => void;
+  onDeleteOrder?: (orderId: string) => void;
   recentlyMovedOrders?: Set<string>;
   isDragOver?: boolean;
   onDragOver: (e: React.DragEvent) => void;
@@ -35,6 +36,7 @@ export function DraggableOrderColumn({
   title, 
   orders, 
   onUpdateStatus,
+  onDeleteOrder,
   recentlyMovedOrders = new Set(),
   isDragOver = false,
   onDragOver,
@@ -101,6 +103,7 @@ export function DraggableOrderColumn({
                 key={order.id}
                 order={order}
                 onUpdateStatus={onUpdateStatus}
+                onDeleteOrder={onDeleteOrder}
                 isNew={recentlyMovedOrders.has(order.id)}
               />
             ))

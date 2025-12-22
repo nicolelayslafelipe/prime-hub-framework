@@ -13,6 +13,7 @@ interface OrderContextType {
   addOrder: (order: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => Promise<unknown>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   assignMotoboy: (orderId: string, motoboyId: string) => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<void>;
   getOrdersByStatus: (status: OrderStatus) => Order[];
   getPendingOrdersCount: () => number;
   refetch: () => Promise<void>;
