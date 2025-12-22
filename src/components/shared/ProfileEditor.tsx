@@ -134,11 +134,6 @@ export function ProfileEditor({ variant = 'client', showPhone = true }: ProfileE
       if (data.email && data.email !== user?.email) {
         const { error: emailError } = await updateEmail(data.email);
         if (emailError) throw emailError;
-        
-        toast({
-          title: 'Email de confirmação enviado!',
-          description: 'Verifique sua caixa de entrada para confirmar o novo email.',
-        });
       }
       
       await refreshProfile();
@@ -296,7 +291,7 @@ export function ProfileEditor({ variant = 'client', showPhone = true }: ProfileE
                 <p className="text-xs text-destructive">{profileForm.formState.errors.email.message}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Um email de confirmação será enviado ao alterar.
+                O email será atualizado imediatamente.
               </p>
             </div>
 
