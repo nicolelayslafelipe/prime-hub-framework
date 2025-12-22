@@ -1212,6 +1212,34 @@ export type Database = {
       }
     }
     Functions: {
+      get_public_establishment_info: {
+        Args: never
+        Returns: {
+          accent_color: string
+          average_prep_time: number
+          average_rating: number
+          banner: string
+          banner_text: string
+          city: string
+          delivery_fee: number
+          description: string
+          estimated_delivery_time: number
+          id: string
+          is_delivery_enabled: boolean
+          is_open: boolean
+          logo: string
+          min_order_value: number
+          name: string
+          neighborhood: string
+          primary_color: string
+          selected_theme: string
+          show_banner: boolean
+          state: string
+          total_reviews: number
+          use_banner_as_login_bg: boolean
+          use_gradient: boolean
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
