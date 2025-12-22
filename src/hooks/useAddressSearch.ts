@@ -10,8 +10,8 @@ export interface GeocodedAddress {
   city: string;
   state: string;
   postcode: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export type AddressSearchStatus = 'idle' | 'loading' | 'success' | 'error';

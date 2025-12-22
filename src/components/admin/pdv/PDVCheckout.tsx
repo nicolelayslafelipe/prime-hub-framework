@@ -95,7 +95,7 @@ export function PDVCheckout({ open, onClose, currentRegister, addTransaction }: 
         notes: item.notes,
       }));
 
-      // Create order
+      // Create order with correct order_type for PDV
       const orderData = {
         customerId: user.id,
         customerName: customerName || 'Cliente PDV',
@@ -114,6 +114,8 @@ export function PDVCheckout({ open, onClose, currentRegister, addTransaction }: 
         needsChange: paymentMethod === 'cash' && change > 0,
         changeFor: paymentMethod === 'cash' ? parseFloat(receivedAmount) : undefined,
         changeAmount: change > 0 ? change : undefined,
+        orderType: orderType, // Salva o tipo correto do pedido (pdv_counter, pdv_pickup, pdv_table)
+        tableNumber: orderType === 'pdv_table' ? tableNumber : undefined,
       };
 
       const result = await addOrder(orderData);
