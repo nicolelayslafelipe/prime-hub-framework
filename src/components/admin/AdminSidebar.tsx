@@ -38,6 +38,7 @@ import {
   BarChart3,
   Monitor,
   History,
+  Map,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -107,6 +108,7 @@ const menuGroups: MenuGroup[] = [
       { icon: Store, label: 'Estabelecimento', path: '/admin/system' },
       { icon: Clock, label: 'Horários', path: '/admin/hours' },
       { icon: Truck, label: 'Entrega', path: '/admin/delivery-config' },
+      { icon: Map, label: 'Mapas', path: '/admin/mapbox' },
       { icon: MessageSquare, label: 'Mensagens', path: '/admin/messages' },
     ],
   },

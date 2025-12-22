@@ -17,6 +17,12 @@ verify_jwt = true
 [functions.admin-delete-user]
 verify_jwt = true
 
+[functions.admin-list-users]
+verify_jwt = true
+
+[functions.admin-update-user]
+verify_jwt = true
+
 [functions.get-mapbox-token]
 verify_jwt = true
 
@@ -46,3 +52,12 @@ verify_jwt = true
 
 [functions.test-payment-connection]
 verify_jwt = true
+
+[functions.update-mapbox-token]
+verify_jwt = true
+
+[functions.test-mapbox-connection]
+verify_jwt = true
+
+[functions.get-manifest]
+verify_jwt = false
