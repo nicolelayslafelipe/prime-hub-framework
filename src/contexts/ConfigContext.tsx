@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { SystemConfig, EstablishmentSettings, ThemeSettings, NotificationSettings, ModuleSettings } from '@/types';
-
+import { toast } from 'sonner';
 const defaultEstablishment: EstablishmentSettings = {
   id: '1',
   name: 'DeliveryOS',
@@ -210,6 +210,19 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchSettings();
 
+    // Subscribe to auth changes to refresh admin status
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        const adminStatus = await checkAdminStatus();
+        setIsAdmin(adminStatus);
+        if (adminStatus) {
+          fetchSettings();
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setIsAdmin(false);
+      }
+    });
+
     // Subscribe to realtime changes (only works for admins due to RLS)
     const channel = supabase
       .channel('establishment_settings_changes')
@@ -228,15 +241,22 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       .subscribe();
 
     return () => {
+      authSubscription.unsubscribe();
       supabase.removeChannel(channel);
     };
   }, []);
 
   const updateEstablishment = async (settings: Partial<EstablishmentSettings>) => {
-    if (!isAdmin) {
+    // Re-check admin status before updating
+    const currentAdminStatus = await checkAdminStatus();
+    if (!currentAdminStatus) {
+      toast.error('Apenas administradores podem alterar configurações');
       console.error('Only admins can update establishment settings');
       return;
     }
+
+    // Store previous state for rollback
+    const previousConfig = { ...config.establishment };
 
     // Update local state immediately for responsiveness
     setConfig((prev) => ({
@@ -297,8 +317,20 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         if (updateError) {
           console.error('Error updating settings:', updateError);
           // Revert local state on error
-          await fetchSettings();
+          setConfig((prev) => ({
+            ...prev,
+            establishment: previousConfig,
+          }));
+          toast.error('Erro ao salvar configurações');
           throw updateError;
+        }
+
+        // Show success feedback for specific toggles
+        if (settings.isOpen !== undefined) {
+          toast.success(settings.isOpen ? 'Estabelecimento aberto' : 'Estabelecimento fechado');
+        }
+        if (settings.isDeliveryEnabled !== undefined) {
+          toast.success(settings.isDeliveryEnabled ? 'Delivery ativado' : 'Delivery desativado');
         }
       }
     } catch (err) {
