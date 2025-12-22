@@ -212,11 +212,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateEmail = async (newEmail: string) => {
     if (!user) return { error: new Error('Usuário não autenticado') };
     
-    const { error } = await supabase.auth.updateUser({
-      email: newEmail,
-    });
+    // Use admin edge function to update email directly without confirmation
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
     
-    return { error: error ? new Error(error.message) : null };
+    if (!token) return { error: new Error('Sessão inválida') };
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-update-user', {
+        body: { userId: user.id, email: newEmail },
+      });
+      
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Erro ao atualizar email');
+      
+      // Refresh session to get updated user data
+      await supabase.auth.refreshSession();
+      
+      return { error: null };
+    } catch (err) {
+      // Fallback to standard method for non-admin users
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+      return { error: error ? new Error(error.message) : null };
+    }
   };
 
   const uploadAvatar = async (file: File) => {
