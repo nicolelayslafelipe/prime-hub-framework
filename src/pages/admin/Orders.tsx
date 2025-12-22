@@ -1,7 +1,9 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useOrders } from '@/contexts/OrderContext';
 import { useSound } from '@/contexts/SoundContext';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { DraggableOrderColumn } from '@/components/admin/DraggableOrderColumn';
+import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
 import { SoundIndicator } from '@/components/shared/SoundIndicator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,8 +31,9 @@ function ColumnSkeleton() {
 }
 
 export default function AdminOrders() {
-  const { orders, updateOrderStatus, getOrdersByStatus, isLoading, connectionStatus } = useOrders();
+  const { orders, updateOrderStatus, deleteOrder, getOrdersByStatus, isLoading, connectionStatus } = useOrders();
   const { adminSettings, isPlayingAdmin } = useSound();
+  const { logOrderAction } = useAuditLog();
   
   // Track recently moved orders for animation
   const [recentlyMovedOrders, setRecentlyMovedOrders] = useState<Set<string>>(new Set());
@@ -39,6 +42,10 @@ export default function AdminOrders() {
   // Drag and drop state
   const [draggedOrder, setDraggedOrder] = useState<Order | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<OrderStatus | null>(null);
+  
+  // Delete state
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Detect status changes and mark orders as recently moved
   useEffect(() => {
@@ -126,6 +133,33 @@ export default function AdminOrders() {
     setDragOverColumn(null);
   }, [orders, updateOrderStatus]);
 
+  // Handle delete order
+  const handleDeleteRequest = useCallback((orderId: string) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (order) {
+      setOrderToDelete(order);
+    }
+  }, [orders]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!orderToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteOrder(orderToDelete.id);
+      await logOrderAction('delete_order', orderToDelete.id, orderToDelete.orderNumber, {
+        status: orderToDelete.status,
+        total: orderToDelete.total,
+      });
+      toast.success(`Pedido #${orderToDelete.orderNumber} excluído com sucesso`);
+      setOrderToDelete(null);
+    } catch (error) {
+      toast.error('Erro ao excluir pedido');
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [orderToDelete, deleteOrder, logOrderAction]);
+
   return (
     <AdminLayout 
       title="Pedidos" 
@@ -158,6 +192,7 @@ export default function AdminOrders() {
               title={column.title}
               orders={getOrdersByStatus(column.status)}
               onUpdateStatus={handleUpdateStatus}
+              onDeleteOrder={handleDeleteRequest}
               recentlyMovedOrders={recentlyMovedOrders}
               isDragOver={dragOverColumn === column.status}
               onDragOver={(e) => handleDragOver(e, column.status)}
@@ -167,6 +202,16 @@ export default function AdminOrders() {
           ))
         )}
       </div>
+      
+      {/* Delete confirmation dialog */}
+      <ConfirmDeleteDialog
+        open={!!orderToDelete}
+        onOpenChange={(open) => !open && setOrderToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Excluir Pedido #${orderToDelete?.orderNumber}`}
+        description={`Tem certeza que deseja excluir o pedido #${orderToDelete?.orderNumber}? Esta ação não pode ser desfeita.`}
+        isLoading={isDeleting}
+      />
     </AdminLayout>
   );
 }

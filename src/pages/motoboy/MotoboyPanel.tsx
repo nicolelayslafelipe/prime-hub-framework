@@ -150,7 +150,7 @@ export default function MotoboyPanel() {
             <Logo size="sm" />
             <div className="h-6 w-px bg-border hidden sm:block" />
             <div className="flex items-center gap-2">
-              <Bike className="h-5 w-5 text-panel-motoboy" />
+              <Bike className="h-5 w-5 text-primary" />
               <span className="font-semibold hidden sm:inline">Painel do Motoboy</span>
             </div>
           </div>

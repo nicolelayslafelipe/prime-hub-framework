@@ -2,19 +2,22 @@ import { useEffect, useState } from 'react';
 import { useOrders } from '@/contexts/OrderContext';
 import { useSound } from '@/contexts/SoundContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { Logo } from '@/components/shared/Logo';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ConnectionStatus } from '@/components/shared/ConnectionStatus';
 import { SoundIndicator } from '@/components/shared/SoundIndicator';
 import { OrderDetailsModal } from '@/components/shared/OrderDetailsModal';
+import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Order, OrderStatus } from '@/types';
-import { Clock, ChefHat, CheckCircle2, Coins, VolumeX, LogOut, User, Eye } from 'lucide-react';
+import { Clock, ChefHat, CheckCircle2, Coins, VolumeX, LogOut, User, Eye, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const kitchenStatuses: OrderStatus[] = ['pending', 'preparing', 'ready'];
 
@@ -60,7 +63,7 @@ function OrderCardSkeleton() {
 }
 
 export default function KitchenPanel() {
-  const { orders, updateOrderStatus, isLoading, connectionStatus } = useOrders();
+  const { orders, updateOrderStatus, deleteOrder, isLoading, connectionStatus } = useOrders();
   const { 
     kitchenSettings, 
     isPlayingKitchen, 
@@ -71,9 +74,12 @@ export default function KitchenPanel() {
     isAudioInitialized,
   } = useSound();
   const { profile, signOut } = useAuth();
+  const { logOrderAction } = useAuditLog();
   const navigate = useNavigate();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
@@ -128,6 +134,32 @@ export default function KitchenPanel() {
     }
   };
 
+  // Handle delete order (only for cancelled orders)
+  const handleDeleteRequest = (order: Order) => {
+    if (order.status === 'cancelled') {
+      setOrderToDelete(order);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!orderToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteOrder(orderToDelete.id);
+      await logOrderAction('delete_order', orderToDelete.id, orderToDelete.orderNumber, {
+        deletedBy: 'kitchen',
+        status: orderToDelete.status,
+      });
+      toast.success(`Pedido #${orderToDelete.orderNumber} excluído`);
+      setOrderToDelete(null);
+    } catch (error) {
+      toast.error('Erro ao excluir pedido');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -137,7 +169,7 @@ export default function KitchenPanel() {
             <Logo size="sm" />
             <div className="h-6 w-px bg-border" />
             <div className="flex items-center gap-2">
-              <ChefHat className="h-5 w-5 text-panel-kitchen" />
+              <ChefHat className="h-5 w-5 text-primary" />
               <span className="font-semibold">Painel da Cozinha</span>
             </div>
           </div>
@@ -380,6 +412,16 @@ export default function KitchenPanel() {
         onOpenChange={setIsModalOpen}
         onUpdateStatus={handleModalUpdateStatus}
         showActions={true}
+      />
+      
+      {/* Delete confirmation dialog */}
+      <ConfirmDeleteDialog
+        open={!!orderToDelete}
+        onOpenChange={(open) => !open && setOrderToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Excluir Pedido #${orderToDelete?.orderNumber}`}
+        description="Somente pedidos cancelados podem ser excluídos pela cozinha. Esta ação não pode ser desfeita."
+        isLoading={isDeleting}
       />
     </div>
   );

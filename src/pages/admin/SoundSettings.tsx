@@ -318,8 +318,8 @@ export default function SoundSettingsPage() {
           'kitchen',
           'Painel Cozinha',
           'Som para pedidos na cozinha com opção de repetição',
-          <Bell className="h-5 w-5 text-orange-500" />,
-          'text-orange-500',
+          <Bell className="h-5 w-5 text-accent" />,
+          'text-accent',
           mergedKitchenSettings,
           isPlayingKitchen,
           true // Show repeat settings
@@ -330,8 +330,8 @@ export default function SoundSettingsPage() {
           'motoboy',
           'Painel Motoboy',
           'Som para pedidos disponíveis e atribuídos ao motoboy',
-          <Bike className="h-5 w-5 text-blue-500" />,
-          'text-blue-500',
+          <Bike className="h-5 w-5 text-primary" />,
+          'text-primary',
           mergedMotoboySettings,
           isPlayingMotoboy
         )}

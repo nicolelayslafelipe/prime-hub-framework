@@ -87,13 +87,13 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
   const [error, setError] = useState<Error | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
 
-  // Fetch all orders with their items
+  // Fetch all orders with their items - ordered by created_at ASC (oldest first for operational view)
   const fetchOrders = useCallback(async () => {
     try {
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (ordersError) throw ordersError;
 
@@ -151,7 +151,8 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
         const items = (itemsData || []).map((item) => mapDbItemToOrderItem(item as DbOrderItem));
         const mappedOrder = mapDbOrderToOrder(newOrder, items);
 
-        setOrders((prev) => [mappedOrder, ...prev]);
+        // Add to end (oldest first ordering)
+        setOrders((prev) => [...prev, mappedOrder]);
         
         // Call onNewOrder callback
         onNewOrder?.(mappedOrder);
@@ -171,7 +172,8 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
           const items = (itemsData || []).map((item) => mapDbItemToOrderItem(item as DbOrderItem));
           const mappedOrder = mapDbOrderToOrder(updatedOrder, items);
 
-          setOrders((prev) => [mappedOrder, ...prev]);
+          // Add to end (oldest first ordering)
+          setOrders((prev) => [...prev, mappedOrder]);
           
           // Call onNewOrder callback since this is effectively a new order for admin
           onNewOrder?.(mappedOrder);
@@ -319,6 +321,33 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
     }
   };
 
+  // Delete order (admin only - validated by RLS)
+  const deleteOrder = async (orderId: string) => {
+    try {
+      // First delete order items
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId);
+
+      if (itemsError) throw itemsError;
+
+      // Then delete the order
+      const { error: orderError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (orderError) throw orderError;
+      
+      // Remove from local state immediately
+      setOrders((prev) => prev.filter((order) => order.id !== orderId));
+    } catch (err) {
+      console.error('Error deleting order:', err);
+      throw err;
+    }
+  };
+
   // Get orders by status
   const getOrdersByStatus = (status: OrderStatus) => {
     return orders.filter((order) => order.status === status);
@@ -337,6 +366,7 @@ export function useRealtimeOrders(options: UseRealtimeOrdersOptions = {}) {
     addOrder,
     updateOrderStatus,
     assignMotoboy,
+    deleteOrder,
     getOrdersByStatus,
     getPendingOrdersCount,
     refetch: fetchOrders,

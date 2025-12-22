@@ -1,6 +1,6 @@
 import { Order, OrderStatus } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Clock, MapPin, ChevronRight, Coins, GripVertical } from 'lucide-react';
+import { Clock, MapPin, ChevronRight, Coins, GripVertical, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 interface DraggableOrderCardProps {
   order: Order;
   onUpdateStatus?: (orderId: string) => void;
+  onDeleteOrder?: (orderId: string) => void;
   isNew?: boolean;
 }
 
@@ -31,9 +32,12 @@ const actionLabels: Partial<Record<OrderStatus, string>> = {
   out_for_delivery: 'Finalizar',
 };
 
-export function DraggableOrderCard({ order, onUpdateStatus, isNew = false }: DraggableOrderCardProps) {
+export function DraggableOrderCard({ order, onUpdateStatus, onDeleteOrder, isNew = false }: DraggableOrderCardProps) {
   const [showHighlight, setShowHighlight] = useState(isNew);
   const [isDragging, setIsDragging] = useState(false);
+  
+  // Check if order can be deleted (cancelled or delivered)
+  const canDelete = ['cancelled', 'delivered'].includes(order.status);
 
   // Remove highlight after animation completes
   useEffect(() => {
@@ -166,20 +170,37 @@ export function DraggableOrderCard({ order, onUpdateStatus, isNew = false }: Dra
             </div>
           )}
 
-          {/* Action button */}
-          {onUpdateStatus && actionLabels[order.status] && (
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                onUpdateStatus(order.id);
-              }}
-              size="sm"
-              className="w-full h-9 font-semibold group"
-            >
-              {actionLabels[order.status]}
-              <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
-            </Button>
-          )}
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            {onUpdateStatus && actionLabels[order.status] && (
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateStatus(order.id);
+                }}
+                size="sm"
+                className="flex-1 h-9 font-semibold group"
+              >
+                {actionLabels[order.status]}
+                <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
+              </Button>
+            )}
+            
+            {/* Delete button for cancelled/delivered orders */}
+            {onDeleteOrder && canDelete && (
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteOrder(order.id);
+                }}
+                size="sm"
+                variant="outline"
+                className="h-9 px-3 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </motion.div>
     </div>
