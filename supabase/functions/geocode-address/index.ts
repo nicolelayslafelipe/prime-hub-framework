@@ -91,11 +91,11 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
 
     if (authError || !user) {
       return new Response(
@@ -104,8 +104,20 @@ serve(async (req) => {
       );
     }
 
+    // Get query from URL params or request body
+    let query: string | null = null;
     const url = new URL(req.url);
-    const query = url.searchParams.get('q');
+    query = url.searchParams.get('q');
+    
+    // If not in URL, try to get from body
+    if (!query && req.method === 'POST') {
+      try {
+        const body = await req.json();
+        query = body?.q || null;
+      } catch {
+        // Body parsing failed, continue with null query
+      }
+    }
     
     if (!query || query.trim().length < 3) {
       return new Response(
