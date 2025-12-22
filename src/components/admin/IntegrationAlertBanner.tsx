@@ -1,14 +1,37 @@
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useIntegrationStatus } from '@/hooks/useIntegrationStatus';
+import { supabase } from '@/integrations/supabase/client';
 
 export function IntegrationAlertBanner() {
   const { integrations, hasErrors } = useIntegrationStatus();
   const [isDismissed, setIsDismissed] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  if (!hasErrors || isDismissed) return null;
+  // Check if current user is admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) {
+          setIsAdmin(false);
+          return;
+        }
+
+        const { data: roleData } = await supabase.rpc('get_user_role', { _user_id: userData.user.id });
+        setIsAdmin(roleData === 'admin');
+      } catch {
+        setIsAdmin(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, []);
+
+  // Don't render for non-admins or if no errors or dismissed
+  if (!isAdmin || !hasErrors || isDismissed) return null;
 
   const errorIntegrations = integrations.filter(i => i.status === 'error' && i.is_active);
 

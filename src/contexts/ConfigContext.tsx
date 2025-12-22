@@ -80,65 +80,124 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<SystemConfig>(defaultConfig);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if current user is admin
+  const checkAdminStatus = async (): Promise<boolean> => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return false;
+
+      const { data: roleData } = await supabase.rpc('get_user_role', { _user_id: userData.user.id });
+      return roleData === 'admin';
+    } catch {
+      return false;
+    }
+  };
 
   const fetchSettings = async () => {
     try {
       setError(null);
-      const { data, error: fetchError } = await supabase
-        .from('establishment_settings')
-        .select('*')
-        .eq('id', SETTINGS_ID)
-        .maybeSingle();
+      
+      // Check if user is admin
+      const adminStatus = await checkAdminStatus();
+      setIsAdmin(adminStatus);
 
-      if (fetchError) throw fetchError;
+      if (adminStatus) {
+        // Admin: fetch full data from table
+        const { data, error: fetchError } = await supabase
+          .from('establishment_settings')
+          .select('*')
+          .eq('id', SETTINGS_ID)
+          .maybeSingle();
 
-      if (data) {
-        setConfig(prev => ({
-          ...prev,
-          establishment: {
-            ...prev.establishment,
-            id: data.id,
-            name: data.name || 'DeliveryOS',
-            description: data.description || '',
-            logo: data.logo || undefined,
-            banner: data.banner || undefined,
-            bannerText: data.banner_text || undefined,
-            showBanner: data.show_banner || false,
-            isOpen: data.is_open ?? true,
-            isDeliveryEnabled: data.is_delivery_enabled ?? true,
-            minOrderValue: data.min_order_value || 20,
-            deliveryFee: data.delivery_fee || 5,
-            estimatedDeliveryTime: data.estimated_delivery_time || 45,
-            address: data.address || 'Rua Exemplo, 123 - Centro',
-            phone: data.phone || '(11) 99999-9999',
-            whatsapp: data.whatsapp || '5511999999999',
-            // Location fields
-            city: data.city || 'São Paulo',
-            state: data.state || 'SP',
-            zipCode: data.zip_code || undefined,
-            neighborhood: data.neighborhood || undefined,
-            // Distance-based fee settings
-            distanceFeeEnabled: data.distance_fee_enabled || false,
-            baseDeliveryFee: data.base_delivery_fee || 5,
-            pricePerKm: data.price_per_km || 2,
-            minDistanceIncluded: data.min_distance_included || 2,
-            establishmentLatitude: data.establishment_latitude || undefined,
-            establishmentLongitude: data.establishment_longitude || undefined,
-            maxDeliveryRadius: data.max_delivery_radius || 10,
-            // ETA settings
-            averagePrepTime: data.average_prep_time || 15,
-            peakTimeAdjustment: data.peak_time_adjustment || 10,
-            // Rating
-            averageRating: data.average_rating ?? 5.0,
-            totalReviews: data.total_reviews ?? 0,
-            // Login background
-            useBannerAsLoginBg: data.use_banner_as_login_bg ?? true,
-            // Appearance
-            primaryColor: data.primary_color || '#10b981',
-            accentColor: data.accent_color || '#34d399',
-            useGradient: data.use_gradient || false,
-          },
-        }));
+        if (fetchError) throw fetchError;
+
+        if (data) {
+          setConfig(prev => ({
+            ...prev,
+            establishment: {
+              ...prev.establishment,
+              id: data.id,
+              name: data.name || 'DeliveryOS',
+              description: data.description || '',
+              logo: data.logo || undefined,
+              banner: data.banner || undefined,
+              bannerText: data.banner_text || undefined,
+              showBanner: data.show_banner || false,
+              isOpen: data.is_open ?? true,
+              isDeliveryEnabled: data.is_delivery_enabled ?? true,
+              minOrderValue: data.min_order_value || 20,
+              deliveryFee: data.delivery_fee || 5,
+              estimatedDeliveryTime: data.estimated_delivery_time || 45,
+              address: data.address || 'Rua Exemplo, 123 - Centro',
+              phone: data.phone || '(11) 99999-9999',
+              whatsapp: data.whatsapp || '5511999999999',
+              // Location fields
+              city: data.city || 'São Paulo',
+              state: data.state || 'SP',
+              zipCode: data.zip_code || undefined,
+              neighborhood: data.neighborhood || undefined,
+              // Distance-based fee settings
+              distanceFeeEnabled: data.distance_fee_enabled || false,
+              baseDeliveryFee: data.base_delivery_fee || 5,
+              pricePerKm: data.price_per_km || 2,
+              minDistanceIncluded: data.min_distance_included || 2,
+              establishmentLatitude: data.establishment_latitude || undefined,
+              establishmentLongitude: data.establishment_longitude || undefined,
+              maxDeliveryRadius: data.max_delivery_radius || 10,
+              // ETA settings
+              averagePrepTime: data.average_prep_time || 15,
+              peakTimeAdjustment: data.peak_time_adjustment || 10,
+              // Rating
+              averageRating: data.average_rating ?? 5.0,
+              totalReviews: data.total_reviews ?? 0,
+              // Login background
+              useBannerAsLoginBg: data.use_banner_as_login_bg ?? true,
+              // Appearance
+              primaryColor: data.primary_color || '#10b981',
+              accentColor: data.accent_color || '#34d399',
+              useGradient: data.use_gradient || false,
+            },
+          }));
+        }
+      } else {
+        // Non-admin: use public RPC function for limited data
+        const { data, error: fetchError } = await supabase.rpc('get_public_establishment_info');
+
+        if (fetchError) throw fetchError;
+
+        const publicData = data?.[0];
+        if (publicData) {
+          setConfig(prev => ({
+            ...prev,
+            establishment: {
+              ...prev.establishment,
+              id: publicData.id || '1',
+              name: publicData.name || 'DeliveryOS',
+              description: publicData.description || '',
+              logo: publicData.logo || undefined,
+              banner: publicData.banner || undefined,
+              bannerText: publicData.banner_text || undefined,
+              showBanner: publicData.show_banner || false,
+              isOpen: publicData.is_open ?? true,
+              isDeliveryEnabled: publicData.is_delivery_enabled ?? true,
+              minOrderValue: publicData.min_order_value || 20,
+              deliveryFee: publicData.delivery_fee || 5,
+              estimatedDeliveryTime: publicData.estimated_delivery_time || 45,
+              city: publicData.city || 'São Paulo',
+              state: publicData.state || 'SP',
+              neighborhood: publicData.neighborhood || undefined,
+              averageRating: publicData.average_rating ?? 5.0,
+              totalReviews: publicData.total_reviews ?? 0,
+              averagePrepTime: publicData.average_prep_time || 15,
+              useBannerAsLoginBg: publicData.use_banner_as_login_bg ?? true,
+              primaryColor: publicData.primary_color || '#10b981',
+              accentColor: publicData.accent_color || '#34d399',
+              useGradient: publicData.use_gradient || false,
+            },
+          }));
+        }
       }
     } catch (err) {
       console.error('Error fetching settings:', err);
@@ -151,7 +210,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchSettings();
 
-    // Subscribe to realtime changes
+    // Subscribe to realtime changes (only works for admins due to RLS)
     const channel = supabase
       .channel('establishment_settings_changes')
       .on(
@@ -174,6 +233,11 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateEstablishment = async (settings: Partial<EstablishmentSettings>) => {
+    if (!isAdmin) {
+      console.error('Only admins can update establishment settings');
+      return;
+    }
+
     // Update local state immediately for responsiveness
     setConfig((prev) => ({
       ...prev,

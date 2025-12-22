@@ -161,25 +161,41 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return 'premium-dark';
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const currentTheme = themes.find(t => t.id === theme) || themes[0];
+
+  // Check if current user is admin
+  const checkAdminStatus = async (): Promise<boolean> => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return false;
+
+      const { data: roleData } = await supabase.rpc('get_user_role', { _user_id: userData.user.id });
+      return roleData === 'admin';
+    } catch {
+      return false;
+    }
+  };
 
   // Fetch theme from database on mount
   useEffect(() => {
     const fetchTheme = async () => {
       try {
-        const { data, error } = await supabase
-          .from('establishment_settings')
-          .select('selected_theme')
-          .single();
+        // Use public RPC function for theme (available to everyone)
+        const { data, error } = await supabase.rpc('get_public_establishment_info');
 
-        if (!error && data?.selected_theme) {
-          const validTheme = themes.find(t => t.id === data.selected_theme);
+        if (!error && data?.[0]?.selected_theme) {
+          const validTheme = themes.find(t => t.id === data[0].selected_theme);
           if (validTheme) {
-            setThemeState(data.selected_theme as ThemeName);
-            localStorage.setItem('deliveryos-theme', data.selected_theme);
+            setThemeState(data[0].selected_theme as ThemeName);
+            localStorage.setItem('deliveryos-theme', data[0].selected_theme);
           }
         }
+
+        // Check admin status for realtime subscription
+        const adminStatus = await checkAdminStatus();
+        setIsAdmin(adminStatus);
       } catch (error) {
         console.error('Error fetching theme:', error);
       } finally {
@@ -188,8 +204,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
 
     fetchTheme();
+  }, []);
 
-    // Subscribe to realtime changes
+  // Subscribe to realtime changes (only for admins)
+  useEffect(() => {
+    if (!isAdmin) return;
+
     const channel = supabase
       .channel('theme-changes')
       .on(
@@ -215,7 +235,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [isAdmin]);
 
   // Apply theme class to document
   useEffect(() => {
@@ -235,6 +255,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = async (newTheme: ThemeName) => {
     setThemeState(newTheme);
     
+    // Only save to database if admin
+    if (!isAdmin) {
+      console.log('Non-admin users cannot persist theme changes to database');
+      return;
+    }
+
     // Save to database
     try {
       const { error } = await supabase
