@@ -126,14 +126,31 @@ serve(async (req) => {
       );
     }
 
-    const mapboxToken = Deno.env.get('MAPBOX_ACCESS_TOKEN');
+    // Try to get token from env first, then from admin_settings
+    let mapboxToken = Deno.env.get('MAPBOX_ACCESS_TOKEN');
     
     if (!mapboxToken) {
+      // Try to get from admin_settings table
+      const { data: settingsData } = await supabaseClient
+        .from('admin_settings')
+        .select('value')
+        .eq('key', 'mapbox_token')
+        .single();
+      
+      if (settingsData?.value?.token) {
+        mapboxToken = settingsData.value.token;
+      }
+    }
+    
+    if (!mapboxToken) {
+      console.error('[geocode-address] No Mapbox token found');
       return new Response(
         JSON.stringify({ success: false, error: 'Geocodificação não configurada', results: [] }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log('[geocode-address] Searching for:', query);
 
     const encodedQuery = encodeURIComponent(query);
     const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedQuery}.json?access_token=${mapboxToken}&country=BR&language=pt&types=address,poi&limit=5`;
