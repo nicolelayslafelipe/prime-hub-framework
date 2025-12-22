@@ -21,12 +21,15 @@ interface MercadoPagoConfig {
   isActive: boolean;
   environment: 'test' | 'production';
   status: 'disconnected' | 'connected' | 'error';
+  credentialsVersion: number;
+  lastUpdated?: string;
 }
 
 const defaultConfig: MercadoPagoConfig = {
   isActive: false,
   environment: 'test',
-  status: 'disconnected'
+  status: 'disconnected',
+  credentialsVersion: 1
 };
 
 export default function AdminMercadoPago() {
@@ -76,8 +79,15 @@ export default function AdminMercadoPago() {
       setIsTokenDialogOpen(false);
       setNewToken('');
       
-      // Update status to connected
-      updateField('status', 'connected');
+      // Update status to connected with incremented version
+      const newConfig: MercadoPagoConfig = {
+        ...config,
+        status: 'connected',
+        credentialsVersion: (config.credentialsVersion || 1) + 1,
+        lastUpdated: new Date().toISOString()
+      };
+      setConfig(newConfig);
+      updateValue(newConfig);
     } catch (error) {
       console.error('Error updating token:', error);
       toast.error('Erro ao atualizar credenciais');

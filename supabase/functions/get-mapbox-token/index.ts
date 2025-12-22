@@ -24,11 +24,13 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
 
     if (authError || !user) {
       return new Response(
@@ -37,7 +39,22 @@ serve(async (req) => {
       );
     }
 
-    const mapboxToken = Deno.env.get('MAPBOX_ACCESS_TOKEN');
+    // Use service role to fetch the token from admin_settings
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // First try to get token from admin_settings (admin-configured token)
+    const { data: tokenData } = await supabaseAdmin
+      .from('admin_settings')
+      .select('value')
+      .eq('key', 'mapbox_token')
+      .maybeSingle();
+
+    let mapboxToken = tokenData?.value?.token;
+
+    // Fallback to environment variable if no admin-configured token
+    if (!mapboxToken) {
+      mapboxToken = Deno.env.get('MAPBOX_ACCESS_TOKEN');
+    }
     
     if (!mapboxToken) {
       return new Response(
@@ -46,8 +63,21 @@ serve(async (req) => {
       );
     }
 
+    // Get credentials version for cache busting
+    const { data: configData } = await supabaseAdmin
+      .from('admin_settings')
+      .select('value')
+      .eq('key', 'mapbox_config')
+      .maybeSingle();
+
+    const credentialsVersion = (configData?.value as any)?.credentialsVersion || 1;
+
     return new Response(
-      JSON.stringify({ success: true, token: mapboxToken }),
+      JSON.stringify({ 
+        success: true, 
+        token: mapboxToken,
+        version: credentialsVersion
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

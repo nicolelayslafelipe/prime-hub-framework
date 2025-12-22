@@ -44,7 +44,23 @@ serve(async (req) => {
       );
     }
 
-    const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
+    // Use service role for database operations
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get the current access token - prefer admin-configured over env
+    const { data: tokenData } = await supabaseAdmin
+      .from('admin_settings')
+      .select('value')
+      .eq('key', 'mercadopago_token')
+      .maybeSingle();
+
+    let accessToken = tokenData?.value?.token;
+    
+    // Fallback to environment variable
+    if (!accessToken) {
+      accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
+    }
     
     if (!accessToken) {
       return new Response(
@@ -52,6 +68,16 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Get credentials version for validation
+    const { data: configData } = await supabaseAdmin
+      .from('admin_settings')
+      .select('value')
+      .eq('key', 'mercado_pago')
+      .maybeSingle();
+
+    const credentialsVersion = (configData?.value as any)?.credentialsVersion || 1;
+    console.log(`Using credentials version: ${credentialsVersion}`);
 
     const { order_id, payment_type, customer_email, description, amount }: PaymentRequest = await req.json();
 
@@ -61,10 +87,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Use service role for database operations
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify order belongs to user
     const { data: order, error: orderError } = await supabaseAdmin
