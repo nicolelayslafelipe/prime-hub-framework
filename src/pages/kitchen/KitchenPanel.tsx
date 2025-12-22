@@ -19,7 +19,7 @@ import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-const kitchenStatuses: OrderStatus[] = ['pending', 'preparing', 'ready'];
+const kitchenStatuses: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'ready'];
 
 const statusFlow: Record<OrderStatus, OrderStatus | null> = {
   waiting_payment: null,
@@ -116,7 +116,7 @@ export default function KitchenPanel() {
     kitchenStatuses.includes(order.status)
   );
 
-  const pendingCount = orders.filter((o) => o.status === 'pending').length;
+  const pendingCount = orders.filter((o) => o.status === 'pending' || o.status === 'confirmed').length;
 
   const handleLogout = async () => {
     await signOut();
@@ -228,7 +228,7 @@ export default function KitchenPanel() {
                 </>
               ) : (
                 orders
-                  .filter((o) => o.status === 'pending')
+                  .filter((o) => o.status === 'pending' || o.status === 'confirmed')
                   .map((order) => (
                     <Card key={order.id} className="p-4 glass animate-fade-in border-l-4 border-l-status-pending">
                       <div className="flex items-start justify-between mb-3">

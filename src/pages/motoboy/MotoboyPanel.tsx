@@ -39,7 +39,7 @@ function OrderCardSkeleton() {
 }
 
 export default function MotoboyPanel() {
-  const { orders, updateOrderStatus, isLoading, connectionStatus } = useOrders();
+  const { orders, updateOrderStatus, assignMotoboy, isLoading, connectionStatus } = useOrders();
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const { 
@@ -109,7 +109,8 @@ export default function MotoboyPanel() {
   }, [availableOrders, isLoading, notificationsEnabled, showNotification]);
 
   const handleAcceptOrder = async (orderId: string) => {
-    await updateOrderStatus(orderId, 'out_for_delivery');
+    if (!profile?.id) return;
+    await assignMotoboy(orderId, profile.id);
   };
 
   const handleCompleteDelivery = async (orderId: string) => {
