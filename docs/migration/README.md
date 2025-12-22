@@ -1,132 +1,129 @@
-# Guia de Migração - DeliveryOS para Supabase Externo
+# 🚀 Guia Completo de Migração - DeliveryOS para Supabase Externo
 
-Este guia contém todos os scripts necessários para migrar o sistema DeliveryOS para um projeto Supabase externo.
+Este guia contém todos os scripts e instruções para migrar o sistema DeliveryOS do Lovable Cloud para um projeto Supabase externo independente.
 
-## 📋 Arquivos Incluídos
+---
 
-| Arquivo | Descrição |
-|---------|-----------|
-| `01_schema.sql` | Estrutura completa (tabelas, funções, tipos) |
-| `02_triggers.sql` | Todos os triggers do sistema |
-| `03_rls_policies.sql` | Políticas de Row Level Security |
-| `04_indexes_realtime.sql` | Índices de performance, Realtime e Storage |
-| `05_data.sql` | Dados existentes (categorias, produtos, etc.) |
+## 📋 Arquivos de Migração
 
-## 🚀 Passo a Passo da Migração
+| # | Arquivo | Descrição |
+|---|---------|-----------|
+| 1 | `01_schema.sql` | Estrutura completa (34 tabelas, 15 funções, tipos) |
+| 2 | `02_triggers.sql` | 25+ triggers do sistema |
+| 3 | `03_rls_policies.sql` | 60+ políticas de Row Level Security |
+| 4 | `04_indexes_realtime.sql` | Índices, Realtime e Storage |
+| 5 | `05_data.sql` | Dados iniciais (categorias, produtos, etc.) |
+| 6 | `06_edge_functions_deploy.md` | Guia de deploy das Edge Functions |
+| 7 | `07_validation_tests.sql` | Script de validação pós-migração |
+| 8 | `08_frontend_deploy.md` | Guia de deploy do frontend |
 
-### 1. Criar Projeto no Supabase
+---
 
-1. Acesse [supabase.com](https://supabase.com)
-2. Crie uma nova conta ou faça login
-3. Clique em "New Project"
-4. Anote as credenciais:
-   - **Project URL**: `https://SEU-PROJETO.supabase.co`
-   - **Anon Key**: `eyJhbG...`
-   - **Service Role Key**: `eyJhbG...` (manter seguro!)
+## 🏁 Passo a Passo Rápido
 
-### 2. Executar os Scripts SQL
+### Fase 1: Preparar Supabase Externo
 
-No Supabase Dashboard, vá em **SQL Editor** e execute os scripts **na ordem**:
+1. Criar projeto em [supabase.com](https://supabase.com)
+2. Anotar credenciais:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY` 
+   - `SUPABASE_SERVICE_ROLE_KEY` (⚠️ manter seguro!)
+
+### Fase 2: Executar Scripts SQL
+
+No **SQL Editor** do Supabase, execute **NA ORDEM**:
 
 ```
-1. 01_schema.sql      → Cria tabelas e funções
-2. 02_triggers.sql    → Cria triggers
+1. 01_schema.sql       → Cria tabelas e funções
+2. 02_triggers.sql     → Cria triggers
 3. 03_rls_policies.sql → Configura RLS
-4. 04_indexes_realtime.sql → Índices e Realtime
-5. 05_data.sql        → Importa dados
+4. 04_indexes_realtime.sql → Índices, Realtime e Storage
+5. 05_data.sql         → Importa dados iniciais
+6. 07_validation_tests.sql → Valida migração
 ```
 
-⚠️ **IMPORTANTE**: Execute cada arquivo separadamente e verifique se não há erros.
-
-### 3. Criar Usuários
-
-Os usuários precisam ser criados manualmente no Supabase Auth:
-
-1. Vá em **Authentication > Users**
-2. Clique em "Add User"
-3. Crie cada usuário com email e senha
-4. Anote os UUIDs gerados
-5. Atualize `05_data.sql` com os novos UUIDs antes de executar
-
-### 4. Configurar Primeiro Admin
-
-Após criar o primeiro usuário, adicione a role de admin:
-
-```sql
--- Substitua pelo UUID do usuário criado
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('UUID-DO-USUARIO', 'admin');
-```
-
-### 5. Configurar Secrets
-
-No Supabase Dashboard, vá em **Settings > Secrets** e adicione:
-
-| Secret | Descrição |
-|--------|-----------|
-| `MERCADO_PAGO_ACCESS_TOKEN` | Token do Mercado Pago |
-| `MAPBOX_ACCESS_TOKEN` | Token do Mapbox |
-
-### 6. Deploy das Edge Functions
-
-Copie todas as edge functions da pasta `supabase/functions/` para o novo projeto:
+### Fase 3: Deploy Edge Functions
 
 ```bash
-# Usando Supabase CLI
+# Instalar CLI
+npm install -g supabase
+
+# Autenticar e linkar
+supabase login
+supabase link --project-ref SEU-PROJECT-ID
+
+# Deploy de todas as funções
 supabase functions deploy admin-create-user
 supabase functions deploy admin-delete-user
 supabase functions deploy admin-list-users
 supabase functions deploy admin-update-user
 supabase functions deploy calculate-delivery-fee
 supabase functions deploy calculate-eta
+supabase functions deploy check-expired-payments
 supabase functions deploy check-integrations-health
 supabase functions deploy create-mercadopago-payment
 supabase functions deploy geocode-address
 supabase functions deploy get-manifest
 supabase functions deploy get-mapbox-token
 supabase functions deploy mercadopago-webhook
+supabase functions deploy send-push-notification
 supabase functions deploy test-mapbox-connection
 supabase functions deploy test-payment-connection
 supabase functions deploy update-mapbox-token
 supabase functions deploy update-payment-credentials
-supabase functions deploy check-expired-payments
-supabase functions deploy send-push-notification
 ```
 
-### 7. Atualizar Variáveis de Ambiente
+### Fase 4: Configurar Secrets
 
-No seu projeto hospedado (Vercel, Netlify, etc.), configure:
+No Supabase Dashboard > Settings > Edge Functions > Secrets:
 
-```env
-VITE_SUPABASE_URL="https://SEU-PROJETO.supabase.co"
-VITE_SUPABASE_PUBLISHABLE_KEY="sua-anon-key"
-VITE_SUPABASE_PROJECT_ID="seu-project-id"
+| Secret | Obrigatório |
+|--------|-------------|
+| `MERCADO_PAGO_ACCESS_TOKEN` | Para pagamentos PIX |
+| `MAPBOX_ACCESS_TOKEN` | Para mapas e geocoding |
+
+### Fase 5: Criar Primeiro Admin
+
+```sql
+-- 1. Crie o usuário no Dashboard > Authentication > Users
+-- 2. Copie o UUID gerado
+-- 3. Execute:
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('UUID-DO-USUARIO', 'admin');
 ```
 
-### 8. Configurar Storage
+### Fase 6: Deploy do Frontend
 
-No Supabase Dashboard, vá em **Storage** e verifique se os buckets foram criados:
+1. Exportar código via GitHub (Settings > GitHub no Lovable)
+2. Clonar repositório:
+   ```bash
+   git clone https://github.com/SEU-USUARIO/SEU-REPO.git
+   cd SEU-REPO
+   npm install
+   ```
+3. Criar `.env`:
+   ```env
+   VITE_SUPABASE_URL="https://SEU-PROJECT-ID.supabase.co"
+   VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbG..."
+   VITE_SUPABASE_PROJECT_ID="SEU-PROJECT-ID"
+   ```
+4. Deploy (Vercel/Netlify):
+   ```bash
+   npm install -g vercel
+   vercel
+   ```
 
-- `avatars` (público)
-- `products` (público)
-- `branding` (público)
+### Fase 7: Configurar Auth
 
-Se não foram criados automaticamente, crie-os manualmente.
+No Supabase > Authentication > URL Configuration:
+- **Site URL**: `https://seu-dominio.com`
+- **Redirect URLs**: 
+  - `https://seu-dominio.com`
+  - `https://seu-dominio.com/auth`
 
-### 9. Configurar Auth
-
-No Supabase Dashboard, vá em **Authentication > Settings**:
-
-1. **Email Auth**:
-   - Habilitar "Enable Email Signup"
-   - Desabilitar "Confirm Email" para testes
-   
-2. **Site URL**:
-   - Configurar a URL do seu domínio
+---
 
 ## 🔒 Estrutura de Roles
-
-O sistema usa 4 roles:
 
 | Role | Descrição | Permissões |
 |------|-----------|------------|
@@ -135,54 +132,66 @@ O sistema usa 4 roles:
 | `motoboy` | Entregador | Ver pedidos prontos, atualizar entregas |
 | `client` | Cliente | Ver próprios pedidos, criar pedidos |
 
-## 📊 Tabelas Principais
+---
 
-### Públicas (visualização)
+## 📊 Tabelas do Sistema
+
+### Públicas (visualização sem login)
 - `categories` - Categorias do cardápio
 - `products` - Produtos
 - `payment_methods` - Formas de pagamento
 - `banners` - Banners promocionais
 - `message_templates` - Templates de mensagens
-- `loyalty_settings` - Config. fidelidade
-- `loyalty_rewards` - Recompensas fidelidade
+- `loyalty_settings` / `loyalty_rewards` - Fidelidade
 
-### Privadas (autenticado)
+### Privadas (requer autenticação)
 - `profiles` - Perfis de usuários
 - `addresses` - Endereços dos clientes
-- `orders` - Pedidos
-- `order_items` - Itens dos pedidos
+- `orders` / `order_items` - Pedidos
 - `payments` - Pagamentos
 - `client_preferences` - Preferências
 
 ### Admin Only
-- `establishment_settings` - Configurações
-- `admin_settings` - Config. admin
+- `establishment_settings` - Configurações do estabelecimento
 - `admin_notifications` - Notificações
 - `admin_audit_logs` - Logs de auditoria
 - `user_roles` - Roles dos usuários
-- `cash_registers` - Caixas
-- `cash_transactions` - Transações do caixa
+- `cash_registers` / `cash_transactions` - Caixa
+
+---
 
 ## ✅ Checklist de Validação
 
-Após a migração, teste:
-
-- [ ] Login com email/senha
-- [ ] Cadastro de novo usuário
-- [ ] Visualização do cardápio (sem login)
-- [ ] Criação de pedido (cliente logado)
-- [ ] Atualização de status (admin)
-- [ ] Acesso ao painel admin
+### Funcionalidades Core
+- [ ] Login/Cadastro funcionando
+- [ ] Cardápio visível (sem login)
+- [ ] Criar pedido (cliente logado)
+- [ ] Atualizar status (admin)
+- [ ] Kanban em tempo real
 - [ ] Upload de imagens
-- [ ] Notificações em tempo real
+- [ ] Pagamento PIX
+- [ ] Notificações
+
+### Segurança (RLS)
+- [ ] Cliente não vê pedidos de outros
+- [ ] Admin vê tudo do estabelecimento
+- [ ] Motoboy vê apenas pedidos atribuídos
+- [ ] Cozinha vê pedidos em preparo
+
+### Realtime
+- [ ] Pedidos atualizam automaticamente
+- [ ] Notificações aparecem sem refresh
+- [ ] Status do Kanban sincroniza
+
+---
 
 ## 🆘 Problemas Comuns
 
-### Erro "infinite recursion in policy"
+### "infinite recursion in policy"
 - Verifique se a função `has_role` foi criada corretamente
 - Execute novamente `01_schema.sql`
 
-### Erro "permission denied"
+### "permission denied"
 - Verifique se RLS está habilitado
 - Verifique se o usuário tem a role correta
 
@@ -191,11 +200,20 @@ Após a migração, teste:
 - Verifique as políticas RLS da tabela
 
 ### Realtime não funciona
-- Verifique se a tabela foi adicionada à publicação
-- Execute: `ALTER PUBLICATION supabase_realtime ADD TABLE public.nome_tabela;`
+- Verifique se a tabela foi adicionada à publicação:
+  ```sql
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.nome_tabela;
+  ```
 
-## 📞 Suporte
+### Imagens não carregam
+- Verifique se os buckets estão públicos
+- Confirme que as URLs estão corretas
 
-Em caso de dúvidas sobre a migração, consulte:
-- [Documentação do Supabase](https://supabase.com/docs)
+---
+
+## 📞 Documentação Adicional
+
+- [Supabase Docs](https://supabase.com/docs)
 - [Supabase CLI](https://supabase.com/docs/guides/cli)
+- [Vercel Deploy](https://vercel.com/docs)
+- [Netlify Deploy](https://docs.netlify.com)
