@@ -20,7 +20,7 @@ import {
 import { useIntegrationStatus, IntegrationStatus as IStatus, IntegrationLog } from '@/hooks/useIntegrationStatus';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 const integrationIcons: Record<string, any> = {
@@ -176,14 +176,25 @@ function LogEntry({ log }: { log: IntegrationLog }) {
 }
 
 export default function IntegrationStatusPage() {
-  const { integrations, logs, isLoading, hasErrors, checkHealth } = useIntegrationStatus();
+  const { integrations, logs, isLoading, hasErrors, checkHealth, refetch } = useIntegrationStatus();
   const [isChecking, setIsChecking] = useState(false);
 
   const handleCheckHealth = async () => {
     setIsChecking(true);
-    await checkHealth();
-    setIsChecking(false);
+    try {
+      await checkHealth();
+    } finally {
+      setIsChecking(false);
+    }
   };
+
+  // Auto-check health on mount if no integrations have been checked
+  useEffect(() => {
+    const hasNeverChecked = integrations.every(i => !i.last_check);
+    if (integrations.length > 0 && hasNeverChecked && !isChecking) {
+      handleCheckHealth();
+    }
+  }, [integrations.length]);
 
   return (
     <AdminLayout 
@@ -193,7 +204,7 @@ export default function IntegrationStatusPage() {
         <Button 
           onClick={handleCheckHealth} 
           disabled={isChecking}
-          variant={hasErrors ? 'destructive' : 'outline'}
+          variant={hasErrors ? 'destructive' : 'default'}
           className="gap-2"
         >
           {isChecking ? (

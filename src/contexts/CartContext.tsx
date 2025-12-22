@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product } from '@/data/mockProducts';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CartItem {
   product: Product;
@@ -16,6 +17,7 @@ interface CartContextType {
   getTotal: () => number;
   getSubtotal: () => number;
   getItemCount: () => number;
+  getDeliveryFee: () => number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
 }
@@ -25,6 +27,37 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [deliveryFee, setDeliveryFee] = useState<number>(5);
+
+  // Fetch delivery fee from establishment settings
+  useEffect(() => {
+    const fetchDeliveryFee = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('establishment_settings')
+          .select('delivery_fee, distance_fee_enabled, base_delivery_fee')
+          .limit(1)
+          .single();
+
+        if (error) {
+          console.error('Error fetching delivery fee:', error);
+          return;
+        }
+
+        if (data) {
+          // Use base_delivery_fee if distance_fee_enabled, otherwise use delivery_fee
+          const fee = data.distance_fee_enabled 
+            ? (data.base_delivery_fee || 5)
+            : (data.delivery_fee || 5);
+          setDeliveryFee(fee);
+        }
+      } catch (err) {
+        console.error('Error fetching delivery settings:', err);
+      }
+    };
+
+    fetchDeliveryFee();
+  }, []);
 
   const addItem = (product: Product, quantity = 1, notes?: string) => {
     setItems((prev) => {
@@ -64,8 +97,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   };
 
+  const getDeliveryFee = () => {
+    return deliveryFee;
+  };
+
   const getTotal = () => {
-    return getSubtotal() + 5; // Fixed delivery fee for now
+    return getSubtotal() + deliveryFee;
   };
 
   const getItemCount = () => {
@@ -83,6 +120,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         getTotal,
         getSubtotal,
         getItemCount,
+        getDeliveryFee,
         isCartOpen,
         setIsCartOpen,
       }}

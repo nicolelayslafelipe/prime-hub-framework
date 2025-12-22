@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAddressSearch, GeocodedAddress } from '@/hooks/useAddressSearch';
-import { MapPin, Loader2, Search, X, CheckCircle2 } from 'lucide-react';
+import { MapPin, Loader2, Search, X, CheckCircle2, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ManualAddressForm } from './ManualAddressForm';
 
 interface AddressAutocompleteProps {
   placeholder?: string;
@@ -23,16 +24,18 @@ export function AddressAutocomplete({
   const [inputValue, setInputValue] = useState(initialValue);
   const [showDropdown, setShowDropdown] = useState(false);
   const [hasSelected, setHasSelected] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { status, results, search, reset } = useAddressSearch();
+  const { status, results, search, reset, errorMessage } = useAddressSearch();
 
   // Debounced search
   const handleInputChange = useCallback((value: string) => {
     setInputValue(value);
     setHasSelected(false);
+    setShowManualForm(false);
     
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -55,15 +58,48 @@ export function AddressAutocomplete({
     setInputValue(address.placeName);
     setShowDropdown(false);
     setHasSelected(true);
+    setShowManualForm(false);
     onAddressSelect(address);
     reset();
   }, [onAddressSelect, reset]);
+
+  // Handle manual form submission
+  const handleManualSubmit = useCallback((data: {
+    street: string;
+    number: string;
+    complement: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  }) => {
+    const fullAddress = `${data.street}, ${data.number}${data.complement ? ` - ${data.complement}` : ''}, ${data.neighborhood}, ${data.city} - ${data.state}`;
+    
+    const manualAddress: GeocodedAddress = {
+      placeId: `manual-${Date.now()}`,
+      placeName: fullAddress,
+      street: data.street,
+      number: data.number,
+      neighborhood: data.neighborhood,
+      city: data.city,
+      state: data.state,
+      postcode: data.zipCode,
+      latitude: null,
+      longitude: null,
+    };
+
+    setInputValue(fullAddress);
+    setShowManualForm(false);
+    setHasSelected(true);
+    onAddressSelect(manualAddress);
+  }, [onAddressSelect]);
 
   // Handle clear
   const handleClear = useCallback(() => {
     setInputValue('');
     setShowDropdown(false);
     setHasSelected(false);
+    setShowManualForm(false);
     reset();
     inputRef.current?.focus();
   }, [reset]);
@@ -93,6 +129,20 @@ export function AddressAutocomplete({
       }
     };
   }, []);
+
+  // Show manual form option when search fails or no results
+  const showManualOption = status === 'error' || (status === 'success' && results.length === 0 && inputValue.length >= 3);
+
+  if (showManualForm) {
+    return (
+      <div className={className}>
+        <ManualAddressForm
+          onSubmit={handleManualSubmit}
+          onCancel={() => setShowManualForm(false)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={cn('relative', className)}>
@@ -161,26 +211,44 @@ export function AddressAutocomplete({
         </div>
       )}
 
-      {/* No results message */}
+      {/* No results message with manual fallback */}
       {showDropdown && status === 'success' && results.length === 0 && inputValue.length >= 3 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg p-4 text-center"
+          className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg p-4"
         >
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground text-center">
             Nenhum endereço encontrado
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Tente digitar mais detalhes
-          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowManualForm(true)}
+            className="w-full mt-3 gap-2"
+          >
+            <Edit2 className="h-4 w-4" />
+            Preencher manualmente
+          </Button>
         </div>
       )}
 
-      {/* Error message */}
+      {/* Error message with manual fallback */}
       {status === 'error' && (
-        <p className="text-xs text-destructive mt-1">
-          Não foi possível buscar endereços. Preencha manualmente.
-        </p>
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-destructive">
+            {errorMessage || 'Não foi possível buscar endereços.'}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowManualForm(true)}
+            className="w-full gap-2"
+          >
+            <Edit2 className="h-4 w-4" />
+            Preencher endereço manualmente
+          </Button>
+        </div>
       )}
     </div>
   );
