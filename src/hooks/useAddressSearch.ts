@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface GeocodedAddress {
   placeId: string;
@@ -70,7 +71,19 @@ export function useAddressSearch(): UseAddressSearchReturn {
     setErrorMessage(null);
 
     try {
+      // Get user session for authentication
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        setStatus('error');
+        setErrorMessage('Você precisa estar logado para buscar endereços');
+        isSearchingRef.current = false;
+        return;
+      }
+
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const encodedQuery = encodeURIComponent(trimmedQuery);
       const url = `${supabaseUrl}/functions/v1/geocode-address?q=${encodedQuery}`;
 
@@ -78,6 +91,8 @@ export function useAddressSearch(): UseAddressSearchReturn {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': anonKey,
         },
       });
 
