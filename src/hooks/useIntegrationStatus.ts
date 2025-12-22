@@ -39,18 +39,44 @@ interface UseIntegrationStatusReturn {
   checkHealth: () => Promise<void>;
 }
 
+// Check if current user is admin
+const checkAdminStatus = async (): Promise<boolean> => {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) return false;
+
+    const { data: roleData } = await supabase.rpc('get_user_role', { _user_id: userData.user.id });
+    return roleData === 'admin';
+  } catch {
+    return false;
+  }
+};
+
 export function useIntegrationStatus(): UseIntegrationStatusReturn {
   const [integrations, setIntegrations] = useState<IntegrationStatus[]>([]);
   const [logs, setLogs] = useState<IntegrationLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Fetch integrations status
+      // Check if user is admin before fetching admin-only data
+      const adminStatus = await checkAdminStatus();
+      setIsAdmin(adminStatus);
+
+      if (!adminStatus) {
+        // Non-admin users should not see integration data
+        setIntegrations([]);
+        setLogs([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch integrations status (admin only)
       const { data: statusData, error: statusError } = await supabase
         .from('integration_status')
         .select('*')
@@ -58,7 +84,7 @@ export function useIntegrationStatus(): UseIntegrationStatusReturn {
 
       if (statusError) throw statusError;
 
-      // Fetch recent logs
+      // Fetch recent logs (admin only)
       const { data: logsData, error: logsError } = await supabase
         .from('integration_logs')
         .select('*')
@@ -71,13 +97,18 @@ export function useIntegrationStatus(): UseIntegrationStatusReturn {
       setLogs((logsData || []) as IntegrationLog[]);
     } catch (err) {
       console.error('Error fetching integration status:', err);
-      setError('Erro ao carregar status das integrações');
+      // Don't show error toast for non-admins (expected behavior)
+      if (isAdmin) {
+        setError('Erro ao carregar status das integrações');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   const checkHealth = useCallback(async () => {
+    if (!isAdmin) return;
+
     try {
       const { error } = await supabase.functions.invoke('check-integrations-health');
       if (error) throw error;
@@ -85,12 +116,16 @@ export function useIntegrationStatus(): UseIntegrationStatusReturn {
     } catch (err) {
       console.error('Error checking health:', err);
     }
-  }, [fetchData]);
+  }, [fetchData, isAdmin]);
 
   useEffect(() => {
     fetchData();
+  }, []);
 
-    // Subscribe to realtime updates
+  // Subscribe to realtime updates only for admins
+  useEffect(() => {
+    if (!isAdmin) return;
+
     const statusChannel = supabase
       .channel('integration-status-changes')
       .on(
@@ -132,7 +167,7 @@ export function useIntegrationStatus(): UseIntegrationStatusReturn {
       supabase.removeChannel(statusChannel);
       supabase.removeChannel(logsChannel);
     };
-  }, [fetchData]);
+  }, [isAdmin]);
 
   const hasErrors = integrations.some(i => i.status === 'error' && i.is_active);
   
