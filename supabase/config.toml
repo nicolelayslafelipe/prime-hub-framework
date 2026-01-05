@@ -61,3 +61,6 @@ verify_jwt = true
 
 [functions.get-manifest]
 verify_jwt = false
+
+[functions.setup-admin]
+verify_jwt = false
