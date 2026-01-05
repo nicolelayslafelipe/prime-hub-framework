@@ -76,6 +76,15 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Timeout para evitar loading infinito
+    const PRODUCTS_TIMEOUT = 10000; // 10 segundos
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.warn('[Products] Timeout - usando lista vazia');
+        setIsLoading(false);
+      }
+    }, PRODUCTS_TIMEOUT);
+
     fetchData();
 
     const productsChannel = supabase
@@ -89,6 +98,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       .subscribe();
 
     return () => {
+      clearTimeout(timeoutId);
       supabase.removeChannel(productsChannel);
       supabase.removeChannel(categoriesChannel);
     };

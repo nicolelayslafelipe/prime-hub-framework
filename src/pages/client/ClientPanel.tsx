@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/shared/Logo';
 import { useConfig } from '@/contexts/ConfigContext';
@@ -38,8 +38,14 @@ import {
   UserPlus,
   User,
   LogOut,
-  Settings
+  Settings,
+  RefreshCw,
+  WifiOff,
+  AlertCircle
 } from 'lucide-react';
+
+// Timeout máximo para loading (15 segundos)
+const LOADING_TIMEOUT = 15000;
 
 export default function ClientPanel() {
   const navigate = useNavigate();
@@ -54,6 +60,23 @@ export default function ClientPanel() {
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+
+  // Timeout para loading infinito
+  useEffect(() => {
+    const isLoading = configLoading || productsLoading;
+    
+    if (isLoading) {
+      const timeoutId = setTimeout(() => {
+        console.warn('[ClientPanel] Loading timeout reached');
+        setLoadingTimedOut(true);
+      }, LOADING_TIMEOUT);
+      
+      return () => clearTimeout(timeoutId);
+    } else {
+      setLoadingTimedOut(false);
+    }
+  }, [configLoading, productsLoading]);
 
   // Helper to format review count
   const formatReviewCount = (count: number) => {
@@ -132,7 +155,49 @@ export default function ClientPanel() {
     await signOut();
   };
 
+  const handleRetry = () => {
+    // Limpar cache do Service Worker e recarregar
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+    }
+    window.location.reload();
+  };
+
   const isLoading = configLoading || productsLoading;
+
+  // Mostrar erro se loading demorar muito
+  if (loadingTimedOut) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="p-4 rounded-full bg-destructive/10 mx-auto w-fit mb-4">
+            {navigator.onLine ? (
+              <AlertCircle className="h-10 w-10 text-destructive" />
+            ) : (
+              <WifiOff className="h-10 w-10 text-destructive" />
+            )}
+          </div>
+          <h2 className="text-xl font-semibold mb-2">
+            {navigator.onLine ? 'Erro ao carregar' : 'Sem conexão'}
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            {navigator.onLine 
+              ? 'O carregamento demorou mais do que o esperado. Isso pode ser um problema de conexão.'
+              : 'Verifique sua conexão com a internet e tente novamente.'}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button onClick={handleRetry} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Tentar novamente
+            </Button>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Recarregar página
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

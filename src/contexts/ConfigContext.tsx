@@ -200,14 +200,24 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (err) {
-      console.error('Error fetching settings:', err);
+      console.error('[Config] Error fetching settings:', err);
       setError('Erro ao carregar configurações');
+      // Usar configuração padrão em caso de erro
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    // Timeout para evitar loading infinito
+    const CONFIG_TIMEOUT = 10000; // 10 segundos
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.warn('[Config] Timeout - usando configuração padrão');
+        setIsLoading(false);
+      }
+    }, CONFIG_TIMEOUT);
+
     fetchSettings();
 
     // Subscribe to auth changes to refresh admin status
@@ -241,6 +251,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       .subscribe();
 
     return () => {
+      clearTimeout(timeoutId);
       authSubscription.unsubscribe();
       supabase.removeChannel(channel);
     };

@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface Props {
@@ -13,6 +13,19 @@ interface State {
   error: Error | null;
   errorInfo: ErrorInfo | null;
 }
+
+// Função para limpar cache do Service Worker
+const clearCacheAndReload = () => {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+    // Aguardar um pouco para o cache ser limpo
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  } else {
+    window.location.reload();
+  }
+};
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
@@ -50,13 +63,17 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="text-sm text-muted-foreground mb-4 max-w-md">
             Ocorreu um erro inesperado. Tente novamente ou recarregue a página.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3 justify-center">
             <Button variant="outline" onClick={this.handleReset}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Tentar novamente
             </Button>
             <Button variant="secondary" onClick={() => window.location.reload()}>
               Recarregar página
+            </Button>
+            <Button variant="ghost" onClick={clearCacheAndReload} className="text-muted-foreground">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Limpar cache
             </Button>
           </div>
           {process.env.NODE_ENV === 'development' && this.state.error && (
@@ -89,11 +106,17 @@ export function ModalErrorFallback({ onClose }: { onClose?: () => void }) {
       <p className="text-sm text-muted-foreground mb-4">
         Não foi possível carregar este conteúdo.
       </p>
-      {onClose && (
-        <Button variant="outline" size="sm" onClick={onClose}>
-          Fechar
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={clearCacheAndReload}>
+          <Trash2 className="h-4 w-4 mr-1" />
+          Limpar cache
         </Button>
-      )}
+        {onClose && (
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Fechar
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
